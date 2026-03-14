@@ -1,4 +1,4 @@
-const CACHE_NAME = 'spese-tech-v1';
+const CACHE_NAME = 'spese-tech-v2';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -34,7 +34,21 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Cache-first for static assets
+  // Network-first for HTML (always get latest version)
+  if (event.request.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname.endsWith('/')) {
+    event.respondWith(
+      fetch(event.request).then(response => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+        }
+        return response;
+      }).catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Cache-first for other static assets (fonts, icons)
   event.respondWith(
     caches.match(event.request).then(cached => {
       if (cached) return cached;

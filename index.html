@@ -107,6 +107,9 @@ tr.retired-row{opacity:.55}
 .progress-track{width:100px;height:8px;background:var(--progress-track);border-radius:4px;overflow:hidden;display:inline-block;vertical-align:middle}
 .progress-fill{height:100%;border-radius:4px;transition:width .6s ease;display:block}
 .progress-text{font-family:var(--mono);font-size:.7rem;color:var(--text-dim);margin-left:6px}
+.progress-wrap{position:relative;display:inline-flex;align-items:center;cursor:help}
+.progress-wrap .progress-tooltip{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--modal-bg);border:1px solid var(--card-border);border-radius:8px;padding:8px 12px;font-family:var(--mono);font-size:.72rem;white-space:pre;z-index:50;box-shadow:0 4px 12px rgba(0,0,0,.2);color:var(--text);line-height:1.6}
+.progress-wrap:hover .progress-tooltip,.progress-wrap.touched .progress-tooltip{display:block}
 
 /* Actions */
 .row-actions{display:flex;gap:4px}
@@ -439,6 +442,18 @@ function getCPDColor(cpd) {
   if (cpd <= 0.50) return 'var(--amber)';
   if (cpd <= 1.00) return 'var(--orange)';
   return 'var(--red)';
+}
+function getMilestoneDate(item, threshold) {
+  const daysNeeded = item.price / threshold;
+  const d = new Date(new Date(item.date).getTime() + daysNeeded * 86400000);
+  return d.toISOString().slice(0, 10);
+}
+function getMilestonesTooltip(item) {
+  return THRESHOLDS.map(t => {
+    const reached = getThresholdReached(item, t);
+    const date = getMilestoneDate(item, t);
+    return `${fmt(t,2)}€/g: ${reached ? '✓ raggiunto' : date}`;
+  }).join('\n');
 }
 
 // ---- PERSISTENCE ----
@@ -782,9 +797,7 @@ function toggleSettings() {
 
 // ---- RENDER ----
 function getFilteredItems() {
-  let list = [...items];
-  if (filterStatus === 'active') list = list.filter(i => !i.retired);
-  else if (filterStatus === 'retired') list = list.filter(i => i.retired);
+  let list = items.filter(i => !i.retired);
   if (filterCategory !== 'all') list = list.filter(i => i.category === filterCategory);
   switch(sortBy) {
     case 'cpd_asc': list.sort((a,b) => getCPD(a) - getCPD(b)); break;
@@ -886,14 +899,6 @@ function renderFilters() {
   const cats = [...new Set(items.map(i => i.category))].sort();
   document.getElementById('filtersBar').innerHTML = `
     <div class="filter-group">
-      <label>Stato</label>
-      <select onchange="filterStatus=this.value;render()">
-        <option value="all"${filterStatus==='all'?' selected':''}>Tutti</option>
-        <option value="active"${filterStatus==='active'?' selected':''}>Attivi</option>
-        <option value="retired"${filterStatus==='retired'?' selected':''}>Ritirati</option>
-      </select>
-    </div>
-    <div class="filter-group">
       <label>Categoria</label>
       <select onchange="filterCategory=this.value;render()">
         <option value="all"${filterCategory==='all'?' selected':''}>Tutte</option>
@@ -922,7 +927,7 @@ function renderTable() {
   let html = `<table>
     <thead><tr>
       <th>Prodotto</th><th>Categoria</th><th>Acquisto</th><th>Prezzo</th>
-      <th>Giorni</th><th>€/giorno</th><th>Soglie</th><th>Progresso → 0.25€/g</th><th>Stato</th><th>Azioni</th>
+      <th>Giorni</th><th>€/giorno</th><th>Soglie</th><th>Progresso → 0.25€/g</th><th>Azioni</th>
     </tr></thead><tbody>`;
 
   list.forEach(item => {
@@ -930,23 +935,15 @@ function renderTable() {
     const days = getDays(item);
     const progress = getProgressPct(item);
     const catColor = CAT_COLORS[item.category] || CAT_COLORS.Altro;
-    const rowClass = item.retired ? ' class="retired-row"' : '';
-
     const thresholds = THRESHOLDS.map(t => {
       const ok = getThresholdReached(item, t);
       return `<span class="threshold-badge ${ok?'threshold-ok':'threshold-no'}" title="${t}€/g">${ok?'✓':'✗'}${fmt(t,2)}</span>`;
     }).join(' ');
 
     const progressColor = getCPDColor(cpd);
-    const statusBadge = item.retired
-      ? `<span class="badge badge-retired">⏸ Ritirato${item.retiredDate ? ' ' + item.retiredDate : ''}</span>`
-      : '<span class="badge badge-active">● Attivo</span>';
+    const tooltip = getMilestonesTooltip(item);
 
-    const retireBtn = item.retired
-      ? `<button title="Riattiva" onclick="retireProduct('${item.id}')">▶️</button>`
-      : `<button title="Ritira" onclick="retireProduct('${item.id}')">⏸</button>`;
-
-    html += `<tr${rowClass}>
+    html += `<tr>
       <td class="product-name">${item.product}</td>
       <td><span class="badge-cat" style="background:${catColor}22;color:${catColor}">${item.category}</span></td>
       <td class="mono">${item.date}</td>
@@ -955,13 +952,15 @@ function renderTable() {
       <td class="mono" style="color:${getCPDColor(cpd)}">${fmt(cpd,2)}</td>
       <td>${thresholds}</td>
       <td>
-        <span class="progress-track"><span class="progress-fill" style="width:${progress}%;background:${progressColor}"></span></span>
-        <span class="progress-text">${fmt(progress,1)}%</span>
+        <span class="progress-wrap" ontouchstart="this.classList.toggle('touched')" ontouchend="setTimeout(()=>this.classList.remove('touched'),2000)">
+          <span class="progress-track"><span class="progress-fill" style="width:${progress}%;background:${progressColor}"></span></span>
+          <span class="progress-text">${fmt(progress,1)}%</span>
+          <span class="progress-tooltip">${tooltip}</span>
+        </span>
       </td>
-      <td>${statusBadge}</td>
       <td class="row-actions">
         <button title="Modifica" onclick="openModal('${item.id}')">✏️</button>
-        ${retireBtn}
+        <button title="Ritira" onclick="retireProduct('${item.id}')">⏸</button>
         <button title="Elimina" onclick="deleteProduct('${item.id}')">🗑️</button>
       </td>
     </tr>`;
@@ -1002,6 +1001,11 @@ function renderRetiredSection() {
       <span class="ri-period">${item.date} → ${item.retiredDate || '?'}</span>
       <span class="ri-cost mono" style="color:${getCPDColor(cpd)}">${fmt(cpd,2)} €/g</span>
       <span class="ri-days">${days} giorni</span>
+      <span class="row-actions">
+        <button title="Modifica" onclick="openModal('${item.id}')">✏️</button>
+        <button title="Riattiva" onclick="retireProduct('${item.id}')">▶️</button>
+        <button title="Elimina" onclick="deleteProduct('${item.id}')">🗑️</button>
+      </span>
     </div>`;
   });
 
