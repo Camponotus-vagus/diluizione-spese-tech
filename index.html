@@ -43,7 +43,7 @@ input,select,textarea{font-family:var(--font);outline:none}
 .container{max-width:1400px;margin:0 auto;padding:0 20px 40px}
 header{display:flex;align-items:center;justify-content:space-between;padding:20px 0;flex-wrap:wrap;gap:12px}
 header h1{font-size:1.4rem;display:flex;align-items:center;gap:10px}
-header h1 span.logo{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:var(--green);border-radius:8px;font-family:var(--mono);font-weight:700;font-size:.85rem;color:var(--logo-text)}
+header h1 span.logo{display:inline-flex;align-items:center;justify-content:center;font-size:1.6rem;line-height:1}
 .header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 
 /* Sync indicator */
@@ -202,7 +202,7 @@ tr.retired-row{opacity:.55}
 
 <div class="container">
   <header>
-    <h1><span class="logo">ST</span> Diluizione Spese Tech</h1>
+    <h1><span class="logo">💻</span> Diluizione Spese Tech</h1>
     <div class="header-actions">
       <span id="syncBadge" class="sync-badge" style="display:none"></span>
       <div class="theme-toggle" id="themeToggle">
@@ -411,6 +411,7 @@ function daysBetween(a, b) {
 function today() {
   return new Date().toISOString().slice(0, 10);
 }
+function fmtDate(iso) { if (!iso) return '?'; const [y,m,d] = iso.split('-'); return `${d}-${m}-${y}`; }
 function fmt(n, d=2) {
   return n.toLocaleString('it-IT', {minimumFractionDigits:d, maximumFractionDigits:d});
 }
@@ -451,7 +452,7 @@ function getMilestoneDate(item, threshold) {
 function getMilestonesTooltip(item) {
   return THRESHOLDS.map(t => {
     const reached = getThresholdReached(item, t);
-    const date = getMilestoneDate(item, t);
+    const date = fmtDate(getMilestoneDate(item, t));
     return `${fmt(t,2)}€/g: ${reached ? '✓ raggiunto' : date}`;
   }).join('\n');
 }
@@ -779,7 +780,7 @@ function exportCSV() {
   const rows = items.map(i => {
     const cpd = getCPD(i);
     const days = getDays(i);
-    return [i.product, i.category, i.date, i.price.toFixed(2), days, cpd.toFixed(2), i.retired?'Ritirato':'Attivo', i.retiredDate||'', i.notes||''].join(';');
+    return [i.product, i.category, fmtDate(i.date), i.price.toFixed(2), days, cpd.toFixed(2), i.retired?'Ritirato':'Attivo', i.retiredDate?fmtDate(i.retiredDate):'', i.notes||''].join(';');
   }).join('\n');
   const blob = new Blob(['\uFEFF' + header + rows], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
@@ -823,7 +824,7 @@ function renderKPIs() {
     const closest = notAmortized[0];
     const daysNeeded = closest.price / 0.25;
     const targetDate = new Date(new Date(closest.date).getTime() + daysNeeded * 86400000);
-    nextMilestone = { product: closest.product, date: targetDate.toISOString().slice(0,10) };
+    nextMilestone = { product: closest.product, date: fmtDate(targetDate.toISOString().slice(0,10)) };
   }
 
   document.getElementById('kpiGrid').innerHTML = `
@@ -946,7 +947,7 @@ function renderTable() {
     html += `<tr>
       <td class="product-name">${item.product}</td>
       <td><span class="badge-cat" style="background:${catColor}22;color:${catColor}">${item.category}</span></td>
-      <td class="mono">${item.date}</td>
+      <td class="mono">${fmtDate(item.date)}</td>
       <td class="mono">${fmtEur(item.price)}</td>
       <td class="mono">${days.toLocaleString('it-IT')}</td>
       <td class="mono" style="color:${getCPDColor(cpd)}">${fmt(cpd,2)}</td>
@@ -998,7 +999,7 @@ function renderRetiredSection() {
     const days = getDays(item);
     html += `<div class="retired-item">
       <span class="ri-name">${item.product}</span>
-      <span class="ri-period">${item.date} → ${item.retiredDate || '?'}</span>
+      <span class="ri-period">${fmtDate(item.date)} → ${fmtDate(item.retiredDate)}</span>
       <span class="ri-cost mono" style="color:${getCPDColor(cpd)}">${fmt(cpd,2)} €/g</span>
       <span class="ri-days">${days} giorni</span>
       <span class="row-actions">
