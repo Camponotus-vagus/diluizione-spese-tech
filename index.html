@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#10b981">
+<title>Diluizione Spese Tech</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+--bg:#0c0f1a;--card:rgba(255,255,255,0.03);--card-border:rgba(255,255,255,0.07);
+--text:#e2e8f0;--text-dim:#94a3b8;--text-muted:#64748b;
+--green:#10b981;--blue:#3b82f6;--amber:#f59e0b;--orange:#f97316;--red:#ef4444;
+--purple:#8b5cf6;--pink:#ec4899;--cyan:#06b6d4;--gray:#6b7280;
+--radius:10px;--font:'DM Sans',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
+}
+html{font-size:15px}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;line-height:1.5}
+h1,h2,h3{font-weight:600}
+button{font-family:var(--font);cursor:pointer;border:none;outline:none}
+input,select,textarea{font-family:var(--font);outline:none}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--text-muted);border-radius:3px}
+
+/* Layout */
+.container{max-width:1400px;margin:0 auto;padding:0 20px 40px}
+header{display:flex;align-items:center;justify-content:space-between;padding:20px 0;flex-wrap:wrap;gap:12px}
+header h1{font-size:1.4rem;display:flex;align-items:center;gap:10px}
+header h1 span.logo{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:var(--green);border-radius:8px;font-family:var(--mono);font-weight:700;font-size:.85rem;color:var(--bg)}
+.header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* Sync indicator */
+.sync-badge{display:inline-flex;align-items:center;gap:5px;font-size:.78rem;padding:4px 10px;border-radius:20px;background:var(--card);border:1px solid var(--card-border);color:var(--text-dim);font-family:var(--mono)}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius);font-size:.82rem;font-weight:500;transition:all .15s ease}
+.btn-primary{background:var(--green);color:#fff}
+.btn-primary:hover{background:#0ea472}
+.btn-secondary{background:var(--card);border:1px solid var(--card-border);color:var(--text-dim)}
+.btn-secondary:hover{border-color:var(--text-muted);color:var(--text)}
+.btn-danger{background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.2)}
+.btn-danger:hover{background:rgba(239,68,68,.2)}
+.btn-icon{padding:8px;border-radius:var(--radius);background:var(--card);border:1px solid var(--card-border);color:var(--text-dim);font-size:1rem}
+.btn-icon:hover{border-color:var(--text-muted);color:var(--text)}
+.btn-sm{padding:5px 10px;font-size:.75rem}
+
+/* KPI Cards */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
+.kpi-card{background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:20px;animation:fadeIn .3s ease}
+.kpi-card .kpi-label{font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.kpi-card .kpi-value{font-family:var(--mono);font-size:1.6rem;font-weight:600}
+.kpi-card .kpi-sub{font-size:.75rem;color:var(--text-dim);margin-top:4px}
+
+/* Charts section */
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px}
+.chart-card{background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:20px;animation:fadeIn .3s ease}
+.chart-card h3{font-size:.9rem;margin-bottom:16px;color:var(--text-dim)}
+.chart-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:.78rem}
+.chart-bar-row .bar-label{width:160px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right;color:var(--text-dim)}
+.chart-bar-row .bar-track{flex:1;height:22px;background:rgba(255,255,255,.04);border-radius:4px;overflow:hidden;position:relative}
+.chart-bar-row .bar-fill{height:100%;border-radius:4px;transition:width .6s ease;display:flex;align-items:center;padding-left:8px;font-family:var(--mono);font-size:.7rem;font-weight:500;color:#fff;white-space:nowrap}
+.chart-bar-row .bar-value{font-family:var(--mono);width:70px;text-align:right;flex-shrink:0;color:var(--text-dim);font-size:.75rem}
+
+/* Filters */
+.filters-bar{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.filter-group{display:flex;align-items:center;gap:6px}
+.filter-group label{font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
+.filter-group select{background:var(--card);border:1px solid var(--card-border);color:var(--text);padding:6px 12px;border-radius:var(--radius);font-size:.8rem}
+.filters-bar .spacer{flex:1}
+
+/* Table */
+.table-wrap{overflow-x:auto;margin-bottom:28px;border-radius:var(--radius);border:1px solid var(--card-border);animation:fadeIn .3s ease}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+thead{background:rgba(255,255,255,.03)}
+th{padding:12px 14px;text-align:left;font-weight:600;font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);border-bottom:1px solid var(--card-border);white-space:nowrap}
+td{padding:10px 14px;border-bottom:1px solid var(--card-border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr.retired-row{opacity:.55}
+.product-name{font-weight:500}
+.mono{font-family:var(--mono);font-size:.78rem}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;font-size:.7rem;font-weight:500}
+.badge-active{background:rgba(16,185,129,.12);color:var(--green)}
+.badge-retired{background:rgba(107,114,128,.15);color:var(--gray)}
+.badge-cat{padding:2px 8px;border-radius:12px;font-size:.7rem;font-weight:500}
+.threshold-badge{font-size:.75rem;margin-right:2px}
+.threshold-ok{color:var(--green)}
+.threshold-no{color:var(--red);opacity:.4}
+
+/* Progress bar */
+.progress-track{width:100px;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;display:inline-block;vertical-align:middle}
+.progress-fill{height:100%;border-radius:4px;transition:width .6s ease}
+.progress-text{font-family:var(--mono);font-size:.7rem;color:var(--text-dim);margin-left:6px}
+
+/* Actions */
+.row-actions{display:flex;gap:4px}
+.row-actions button{background:none;border:none;font-size:.95rem;padding:4px 6px;cursor:pointer;border-radius:6px;transition:background .15s}
+.row-actions button:hover{background:rgba(255,255,255,.08)}
+
+/* Retired section */
+.retired-section{background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:24px;margin-bottom:28px;animation:fadeIn .3s ease}
+.retired-section h3{font-size:1rem;margin-bottom:16px;color:var(--text-dim)}
+.retired-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:20px}
+.retired-stat{text-align:center}
+.retired-stat .rs-val{font-family:var(--mono);font-size:1.2rem;font-weight:600}
+.retired-stat .rs-label{font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
+.retired-list{border-top:1px solid var(--card-border);padding-top:14px}
+.retired-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--card-border);font-size:.82rem;flex-wrap:wrap;gap:6px}
+.retired-item:last-child{border-bottom:none}
+.retired-item .ri-name{font-weight:500;min-width:150px}
+.retired-item .ri-period{color:var(--text-dim);font-size:.75rem}
+.retired-item .ri-cost{font-family:var(--mono);font-size:.78rem}
+.retired-item .ri-days{color:var(--text-muted);font-size:.75rem}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:100;padding:20px}
+.modal-overlay.active{display:flex}
+.modal{background:#141825;border:1px solid var(--card-border);border-radius:14px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;animation:fadeIn .3s ease;padding:28px}
+.modal h2{font-size:1.1rem;margin-bottom:20px}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.form-group input,.form-group select,.form-group textarea{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--card-border);color:var(--text);padding:10px 14px;border-radius:var(--radius);font-size:.88rem}
+.form-group textarea{resize:vertical;min-height:60px}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--green)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+
+/* Settings panel */
+.settings-panel{background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:24px;margin-bottom:28px;animation:fadeIn .3s ease}
+.settings-panel h3{font-size:1rem;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.settings-row{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.settings-row label{font-size:.78rem;color:var(--text-muted);min-width:100px}
+.settings-row input{flex:1;min-width:200px;background:rgba(255,255,255,.04);border:1px solid var(--card-border);color:var(--text);padding:8px 12px;border-radius:var(--radius);font-size:.82rem;font-family:var(--mono)}
+.settings-row input:focus{border-color:var(--green)}
+.settings-info{font-size:.75rem;color:var(--text-muted);margin-bottom:12px;line-height:1.6}
+.settings-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.settings-status{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:.82rem;margin-bottom:12px;padding:12px;background:rgba(255,255,255,.02);border-radius:var(--radius)}
+.settings-status a{color:var(--blue);text-decoration:none;font-family:var(--mono);font-size:.75rem}
+.settings-status a:hover{text-decoration:underline}
+
+/* IO bar */
+.io-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:28px}
+
+/* Empty state */
+.empty{text-align:center;padding:60px 20px;color:var(--text-muted)}
+
+/* Animations */
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* Confirm dialog */
+.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:200;padding:20px}
+.confirm-overlay.active{display:flex}
+.confirm-box{background:#141825;border:1px solid var(--card-border);border-radius:14px;padding:24px;max-width:380px;width:100%;animation:fadeIn .3s ease;text-align:center}
+.confirm-box p{margin-bottom:20px;font-size:.9rem}
+.confirm-box .confirm-actions{display:flex;gap:8px;justify-content:center}
+
+/* Responsive */
+@media(max-width:1199px){
+  .chart-bar-row .bar-label{width:120px}
+}
+@media(max-width:767px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .charts-grid{grid-template-columns:1fr}
+  .filters-bar{flex-direction:column;align-items:stretch}
+  .filters-bar .spacer{display:none}
+  .header-actions{width:100%;justify-content:flex-end}
+  .btn{padding:10px 18px;font-size:.85rem}
+  .chart-bar-row .bar-label{width:100px;font-size:.72rem}
+  .settings-row{flex-direction:column;align-items:stretch}
+  .settings-row label{min-width:auto}
+  .settings-row input{min-width:auto}
+  .retired-stats{grid-template-columns:repeat(2,1fr)}
+  header h1{font-size:1.15rem}
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1><span class="logo">ST</span> Diluizione Spese Tech</h1>
+    <div class="header-actions">
+      <span id="syncBadge" class="sync-badge" style="display:none"></span>
+      <button class="btn-icon" onclick="toggleSettings()" title="Impostazioni sync">&#9881;</button>
+      <button class="btn btn-primary" onclick="openModal()">+ Aggiungi</button>
+    </div>
+  </header>
+
+  <!-- Settings Panel -->
+  <div id="settingsPanel" class="settings-panel" style="display:none">
+    <h3>&#9881; Configurazione Sync</h3>
+    <div id="syncConfigForm">
+      <div class="settings-info">
+        Inserisci un <strong>GitHub Personal Access Token</strong> con scope <code>gist</code> per sincronizzare i dati tramite un Gist privato. Il token viene salvato solo nel localStorage del browser.
+      </div>
+      <div class="settings-row">
+        <label>Token PAT</label>
+        <input type="password" id="inputToken" placeholder="ghp_xxxxxxxxxxxx">
+      </div>
+      <div class="settings-row">
+        <label>Gist ID</label>
+        <input type="text" id="inputGistId" placeholder="(opzionale — ne creeremo uno nuovo)">
+      </div>
+      <div class="settings-actions">
+        <button class="btn btn-primary" onclick="configureSync()">Configura</button>
+      </div>
+    </div>
+    <div id="syncStatusPanel" style="display:none">
+      <div class="settings-status">
+        <span id="syncStatusText"></span>
+        <span id="syncGistLink"></span>
+        <span id="syncLastTime" style="color:var(--text-muted);font-size:.75rem"></span>
+      </div>
+      <div class="settings-actions">
+        <button class="btn btn-secondary" onclick="doSync()">&#128260; Sync ora</button>
+        <button class="btn btn-secondary" onclick="pullFromGist()">&#128229; Pull da Gist</button>
+        <button class="btn btn-secondary" onclick="pushToGist()">&#128228; Push su Gist</button>
+        <button class="btn btn-danger" onclick="disconnectSync()">&#128268; Disconnetti</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI -->
+  <div class="kpi-grid" id="kpiGrid"></div>
+
+  <!-- Charts -->
+  <div class="charts-grid" id="chartsGrid"></div>
+
+  <!-- IO bar -->
+  <div class="io-bar">
+    <button class="btn btn-secondary" onclick="exportJSON()">&#128228; Esporta JSON</button>
+    <button class="btn btn-secondary" onclick="importJSON()">&#128229; Importa JSON</button>
+    <button class="btn btn-secondary" onclick="exportCSV()">&#128202; Esporta CSV</button>
+    <input type="file" id="fileInput" accept=".json" style="display:none" onchange="handleImport(event)">
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-bar" id="filtersBar"></div>
+
+  <!-- Table -->
+  <div class="table-wrap" id="tableWrap"></div>
+
+  <!-- Retired section -->
+  <div id="retiredSection" class="retired-section" style="display:none"></div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="event.target===this&&closeModal()">
+  <div class="modal">
+    <h2 id="modalTitle">Aggiungi prodotto</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Prodotto *</label>
+        <input type="text" id="fProduct" required>
+      </div>
+      <div class="form-group">
+        <label>Categoria *</label>
+        <select id="fCategory">
+          <option value="Audio">Audio</option>
+          <option value="Laptop">Laptop</option>
+          <option value="Wearable">Wearable</option>
+          <option value="Tablet">Tablet</option>
+          <option value="Desktop">Desktop</option>
+          <option value="Smartphone">Smartphone</option>
+          <option value="Drone">Drone</option>
+          <option value="Fotografia">Fotografia</option>
+          <option value="Gaming">Gaming</option>
+          <option value="Altro">Altro</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Data acquisto *</label>
+        <input type="date" id="fDate">
+      </div>
+      <div class="form-group">
+        <label>Prezzo (€) *</label>
+        <input type="number" id="fPrice" step="0.01" min="0">
+      </div>
+    </div>
+    <div id="editFields" style="display:none">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Stato</label>
+          <select id="fStatus">
+            <option value="active">Attivo</option>
+            <option value="retired">Ritirato</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Data ritiro</label>
+          <input type="date" id="fRetiredDate">
+        </div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Note</label>
+      <textarea id="fNotes" rows="2"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Annulla</button>
+      <button class="btn btn-primary" id="modalSaveBtn" onclick="saveProduct()">Salva</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm dialog -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <p id="confirmMsg"></p>
+    <div class="confirm-actions">
+      <button class="btn btn-secondary" onclick="closeConfirm(false)">Annulla</button>
+      <button class="btn btn-danger" id="confirmBtn" onclick="closeConfirm(true)">Conferma</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---- CONSTANTS ----
+const CAT_COLORS = {Audio:'#f59e0b',Laptop:'#3b82f6',Wearable:'#ec4899',Tablet:'#8b5cf6',Desktop:'#10b981',Smartphone:'#ef4444',Drone:'#06b6d4',Fotografia:'#a855f7',Gaming:'#f97316',Altro:'#6b7280'};
+const CATEGORIES = Object.keys(CAT_COLORS);
+const THRESHOLDS = [1, 0.50, 0.25];
+const DEFAULT_DATA = [
+  {"product":"Airpods 3 gen.","date":"2021-12-21","price":179.99,"category":"Audio"},
+  {"product":"Chuwi LapBook Air 14\"","date":"2018-06-23","price":333.35,"category":"Laptop"},
+  {"product":"Apple Watch Series 6","date":"2021-10-21","price":389.00,"category":"Wearable"},
+  {"product":"iPad mini 5","date":"2019-09-12","price":412.82,"category":"Tablet"},
+  {"product":"Intel NUC + comp.","date":"2021-01-15","price":670.57,"category":"Desktop"},
+  {"product":"iPad Air 4","date":"2022-02-05","price":687.64,"category":"Tablet"},
+  {"product":"iPhone 11 + batt.","date":"2019-09-23","price":988.00,"category":"Smartphone"},
+  {"product":"DJI Magic 2 Zoom + kit","date":"2019-06-15","price":1590.30,"category":"Drone"},
+  {"product":"HP Omen 880-190nl","date":"2019-05-28","price":1999.99,"category":"Desktop"},
+  {"product":"MacBook Pro 16\"","date":"2019-12-31","price":3510.18,"category":"Laptop"},
+  {"product":"Mac Mini M1","date":"2022-12-01","price":1279.00,"category":"Desktop"},
+  {"product":"Lomi Composter","date":"2024-04-22","price":399.00,"category":"Altro"}
+];
+
+// ---- STATE ----
+let items = [];
+let editingId = null;
+let filterStatus = 'all';
+let filterCategory = 'all';
+let sortBy = 'cpd_asc';
+let confirmResolve = null;
+
+// ---- UTILS ----
+function uuid() {
+  return crypto.randomUUID ? crypto.randomUUID() : 'xxxx-xxxx-xxxx'.replace(/x/g,()=>(Math.random()*16|0).toString(16));
+}
+function daysBetween(a, b) {
+  return Math.max(1, Math.round((new Date(b) - new Date(a)) / 86400000));
+}
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+function fmt(n, d=2) {
+  return n.toLocaleString('it-IT', {minimumFractionDigits:d, maximumFractionDigits:d});
+}
+function fmtEur(n) {
+  return '€\u00A0' + fmt(n);
+}
+
+function getCPD(item) {
+  const end = item.retired && item.retiredDate ? item.retiredDate : today();
+  const days = daysBetween(item.date, end);
+  return item.price / days;
+}
+function getDays(item) {
+  const end = item.retired && item.retiredDate ? item.retiredDate : today();
+  return daysBetween(item.date, end);
+}
+function getThresholdReached(item, threshold) {
+  const daysNeeded = item.price / threshold;
+  const daysUsed = getDays(item);
+  return daysUsed >= daysNeeded;
+}
+function getProgressPct(item) {
+  const daysNeeded = item.price / 0.25;
+  const daysUsed = getDays(item);
+  return Math.min(100, (daysUsed / daysNeeded) * 100);
+}
+function getCPDColor(cpd) {
+  if (cpd <= 0.25) return 'var(--green)';
+  if (cpd <= 0.50) return 'var(--amber)';
+  if (cpd <= 1.00) return 'var(--orange)';
+  return 'var(--red)';
+}
+
+// ---- PERSISTENCE ----
+function save() {
+  const data = { items, lastModified: new Date().toISOString() };
+  localStorage.setItem('diluizione_data', JSON.stringify(data));
+}
+function load() {
+  const raw = localStorage.getItem('diluizione_data');
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      items = parsed.items || parsed;
+      return true;
+    } catch(e) {}
+  }
+  return false;
+}
+function getLastModified() {
+  const raw = localStorage.getItem('diluizione_data');
+  if (raw) {
+    try { return JSON.parse(raw).lastModified || null; } catch(e) {}
+  }
+  return null;
+}
+
+// ---- SYNC ----
+function getSyncConfig() {
+  const token = localStorage.getItem('sync_token');
+  const gistId = localStorage.getItem('sync_gist_id');
+  return token && gistId ? { token, gistId } : null;
+}
+function setSyncStatus(emoji, text) {
+  const badge = document.getElementById('syncBadge');
+  badge.textContent = emoji + ' ' + text;
+  badge.style.display = 'inline-flex';
+}
+function updateSyncUI() {
+  const cfg = getSyncConfig();
+  const configForm = document.getElementById('syncConfigForm');
+  const statusPanel = document.getElementById('syncStatusPanel');
+  if (cfg) {
+    configForm.style.display = 'none';
+    statusPanel.style.display = 'block';
+    document.getElementById('syncStatusText').textContent = '🟢 Connesso';
+    document.getElementById('syncGistLink').innerHTML = '<a href="https://gist.github.com/' + cfg.gistId + '" target="_blank">' + cfg.gistId.slice(0,12) + '…</a>';
+    const lastSync = localStorage.getItem('sync_last');
+    document.getElementById('syncLastTime').textContent = lastSync ? 'Ultimo sync: ' + new Date(lastSync).toLocaleString('it-IT') : '';
+    setSyncStatus('🟢', 'Sync');
+  } else {
+    configForm.style.display = 'block';
+    statusPanel.style.display = 'none';
+    document.getElementById('syncBadge').style.display = 'none';
+  }
+}
+
+async function configureSync() {
+  const token = document.getElementById('inputToken').value.trim();
+  const gistId = document.getElementById('inputGistId').value.trim();
+  if (!token) { alert('Inserisci il token PAT'); return; }
+  setSyncStatus('🔄', 'Configurazione…');
+  try {
+    if (gistId) {
+      const res = await fetch('https://api.github.com/gists/' + gistId, {
+        headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github+json' }
+      });
+      if (!res.ok) throw new Error('Gist non trovato o token non valido');
+    } else {
+      const res = await fetch('https://api.github.com/gists', {
+        method: 'POST',
+        headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: 'Diluizione Spese Tech - Data', public: false, files: { 'diluizione_data.json': { content: JSON.stringify({ items: items, lastModified: new Date().toISOString() }) } } })
+      });
+      if (!res.ok) throw new Error('Impossibile creare il Gist');
+      const data = await res.json();
+      document.getElementById('inputGistId').value = data.id;
+      localStorage.setItem('sync_gist_id', data.id);
+    }
+    localStorage.setItem('sync_token', token);
+    if (gistId) localStorage.setItem('sync_gist_id', gistId);
+    localStorage.setItem('sync_last', new Date().toISOString());
+    document.getElementById('inputToken').value = '';
+    updateSyncUI();
+    if (gistId) await pullFromGist();
+  } catch(e) {
+    setSyncStatus('🔴', 'Errore');
+    alert('Errore configurazione: ' + e.message);
+  }
+}
+
+async function pushToGist() {
+  const cfg = getSyncConfig();
+  if (!cfg) return;
+  setSyncStatus('🔄', 'Push…');
+  try {
+    const res = await fetch('https://api.github.com/gists/' + cfg.gistId, {
+      method: 'PATCH',
+      headers: { 'Authorization': 'token ' + cfg.token, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files: { 'diluizione_data.json': { content: JSON.stringify({ items, lastModified: new Date().toISOString() }) } } })
+    });
+    if (!res.ok) throw new Error('Push fallito');
+    localStorage.setItem('sync_last', new Date().toISOString());
+    setSyncStatus('🟢', 'Sync');
+    updateSyncUI();
+  } catch(e) {
+    setSyncStatus('🔴', 'Errore push');
+  }
+}
+
+async function pullFromGist() {
+  const cfg = getSyncConfig();
+  if (!cfg) return;
+  setSyncStatus('🔄', 'Pull…');
+  try {
+    const res = await fetch('https://api.github.com/gists/' + cfg.gistId, {
+      headers: { 'Authorization': 'token ' + cfg.token, 'Accept': 'application/vnd.github+json' }
+    });
+    if (!res.ok) throw new Error('Pull fallito');
+    const data = await res.json();
+    const file = data.files['diluizione_data.json'];
+    if (file) {
+      const parsed = JSON.parse(file.content);
+      items = parsed.items || parsed;
+      save();
+      render();
+    }
+    localStorage.setItem('sync_last', new Date().toISOString());
+    setSyncStatus('🟢', 'Sync');
+    updateSyncUI();
+  } catch(e) {
+    setSyncStatus('🔴', 'Errore pull');
+  }
+}
+
+async function doSync() {
+  const cfg = getSyncConfig();
+  if (!cfg) return;
+  setSyncStatus('🔄', 'Sync…');
+  try {
+    // Pull first to check remote lastModified
+    const res = await fetch('https://api.github.com/gists/' + cfg.gistId, {
+      headers: { 'Authorization': 'token ' + cfg.token, 'Accept': 'application/vnd.github+json' }
+    });
+    if (!res.ok) throw new Error('Sync fallito');
+    const data = await res.json();
+    const file = data.files['diluizione_data.json'];
+    if (file) {
+      const remote = JSON.parse(file.content);
+      const remoteLM = remote.lastModified || '';
+      const localLM = getLastModified() || '';
+      if (remoteLM > localLM) {
+        items = remote.items || remote;
+        save();
+        render();
+      } else {
+        await pushToGist();
+        return;
+      }
+    }
+    localStorage.setItem('sync_last', new Date().toISOString());
+    setSyncStatus('🟢', 'Sync');
+    updateSyncUI();
+  } catch(e) {
+    setSyncStatus('🔴', 'Errore sync');
+  }
+}
+
+function disconnectSync() {
+  localStorage.removeItem('sync_token');
+  localStorage.removeItem('sync_gist_id');
+  localStorage.removeItem('sync_last');
+  updateSyncUI();
+}
+
+async function afterModification() {
+  save();
+  render();
+  const cfg = getSyncConfig();
+  if (cfg) {
+    try { await pushToGist(); } catch(e) { setSyncStatus('🔴', 'Errore sync'); }
+  }
+}
+
+// ---- CONFIRM ----
+function showConfirm(msg) {
+  return new Promise(resolve => {
+    confirmResolve = resolve;
+    document.getElementById('confirmMsg').textContent = msg;
+    document.getElementById('confirmOverlay').classList.add('active');
+  });
+}
+function closeConfirm(result) {
+  document.getElementById('confirmOverlay').classList.remove('active');
+  if (confirmResolve) { confirmResolve(result); confirmResolve = null; }
+}
+
+// ---- MODAL ----
+function openModal(id) {
+  editingId = id || null;
+  const modal = document.getElementById('modalOverlay');
+  document.getElementById('modalTitle').textContent = id ? 'Modifica prodotto' : 'Aggiungi prodotto';
+  document.getElementById('editFields').style.display = id ? 'block' : 'none';
+  if (id) {
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+    document.getElementById('fProduct').value = item.product;
+    document.getElementById('fCategory').value = item.category;
+    document.getElementById('fDate').value = item.date;
+    document.getElementById('fPrice').value = item.price;
+    document.getElementById('fNotes').value = item.notes || '';
+    document.getElementById('fStatus').value = item.retired ? 'retired' : 'active';
+    document.getElementById('fRetiredDate').value = item.retiredDate || '';
+  } else {
+    document.getElementById('fProduct').value = '';
+    document.getElementById('fCategory').value = 'Audio';
+    document.getElementById('fDate').value = today();
+    document.getElementById('fPrice').value = '';
+    document.getElementById('fNotes').value = '';
+    document.getElementById('fStatus').value = 'active';
+    document.getElementById('fRetiredDate').value = '';
+  }
+  modal.classList.add('active');
+  document.getElementById('fProduct').focus();
+}
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('active');
+  editingId = null;
+}
+
+function saveProduct() {
+  const product = document.getElementById('fProduct').value.trim();
+  const category = document.getElementById('fCategory').value;
+  const date = document.getElementById('fDate').value;
+  const price = parseFloat(document.getElementById('fPrice').value);
+  const notes = document.getElementById('fNotes').value.trim();
+  if (!product || !date || isNaN(price) || price <= 0) {
+    alert('Compila tutti i campi obbligatori');
+    return;
+  }
+  if (editingId) {
+    const item = items.find(i => i.id === editingId);
+    if (!item) return;
+    item.product = product;
+    item.category = category;
+    item.date = date;
+    item.price = price;
+    item.notes = notes;
+    const status = document.getElementById('fStatus').value;
+    item.retired = status === 'retired';
+    item.retiredDate = item.retired ? (document.getElementById('fRetiredDate').value || today()) : null;
+  } else {
+    items.push({ id: uuid(), product, date, price, category, retired: false, retiredDate: null, notes });
+  }
+  closeModal();
+  afterModification();
+}
+
+async function retireProduct(id) {
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  if (!item.retired) {
+    const ok = await showConfirm('Vuoi ritirare "' + item.product + '"?');
+    if (!ok) return;
+    item.retired = true;
+    item.retiredDate = today();
+  } else {
+    item.retired = false;
+    item.retiredDate = null;
+  }
+  afterModification();
+}
+
+async function deleteProduct(id) {
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  const ok = await showConfirm('Vuoi eliminare "' + item.product + '"?');
+  if (!ok) return;
+  items = items.filter(i => i.id !== id);
+  afterModification();
+}
+
+// ---- IMPORT/EXPORT ----
+function exportJSON() {
+  const blob = new Blob([JSON.stringify({ items, lastModified: new Date().toISOString() }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'diluizione_spese_' + today() + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function importJSON() {
+  document.getElementById('fileInput').click();
+}
+function handleImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      const arr = parsed.items || parsed;
+      if (!Array.isArray(arr)) throw new Error('Formato non valido');
+      items = arr.map(i => ({
+        id: i.id || uuid(),
+        product: i.product || '',
+        date: i.date || today(),
+        price: Number(i.price) || 0,
+        category: i.category || 'Altro',
+        retired: !!i.retired,
+        retiredDate: i.retiredDate || null,
+        notes: i.notes || ''
+      }));
+      afterModification();
+    } catch(err) {
+      alert('Errore importazione: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+function exportCSV() {
+  const header = 'Prodotto;Categoria;Acquisto;Prezzo;Giorni;Euro/Giorno;Stato;Data Ritiro;Note\n';
+  const rows = items.map(i => {
+    const cpd = getCPD(i);
+    const days = getDays(i);
+    return [i.product, i.category, i.date, i.price.toFixed(2), days, cpd.toFixed(2), i.retired?'Ritirato':'Attivo', i.retiredDate||'', i.notes||''].join(';');
+  }).join('\n');
+  const blob = new Blob(['\uFEFF' + header + rows], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'diluizione_spese_' + today() + '.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ---- SETTINGS TOGGLE ----
+function toggleSettings() {
+  const p = document.getElementById('settingsPanel');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+
+// ---- RENDER ----
+function getFilteredItems() {
+  let list = [...items];
+  if (filterStatus === 'active') list = list.filter(i => !i.retired);
+  else if (filterStatus === 'retired') list = list.filter(i => i.retired);
+  if (filterCategory !== 'all') list = list.filter(i => i.category === filterCategory);
+  switch(sortBy) {
+    case 'cpd_asc': list.sort((a,b) => getCPD(a) - getCPD(b)); break;
+    case 'price_desc': list.sort((a,b) => b.price - a.price); break;
+    case 'days_desc': list.sort((a,b) => getDays(b) - getDays(a)); break;
+    case 'progress_desc': list.sort((a,b) => getProgressPct(b) - getProgressPct(a)); break;
+  }
+  return list;
+}
+
+function renderKPIs() {
+  const active = items.filter(i => !i.retired);
+  const totalActive = active.reduce((s,i) => s + i.price, 0);
+  const avgCPD = active.length ? active.reduce((s,i) => s + getCPD(i), 0) / active.length : 0;
+  const amortized = active.filter(i => getCPD(i) <= 0.25);
+  const amortPct = active.length ? (amortized.length / active.length * 100) : 0;
+
+  // Next milestone
+  const notAmortized = active.filter(i => getCPD(i) > 0.25);
+  let nextMilestone = null;
+  if (notAmortized.length) {
+    notAmortized.sort((a,b) => getProgressPct(b) - getProgressPct(a));
+    const closest = notAmortized[0];
+    const daysNeeded = closest.price / 0.25;
+    const targetDate = new Date(new Date(closest.date).getTime() + daysNeeded * 86400000);
+    nextMilestone = { product: closest.product, date: targetDate.toISOString().slice(0,10) };
+  }
+
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-label">Spesa attiva totale</div>
+      <div class="kpi-value">${fmtEur(totalActive)}</div>
+      <div class="kpi-sub">${active.length} prodott${active.length===1?'o':'i'} attiv${active.length===1?'o':'i'}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Costo medio/giorno</div>
+      <div class="kpi-value" style="color:${getCPDColor(avgCPD)}">${fmt(avgCPD,2)} €/g</div>
+      <div class="kpi-sub">media prodotti attivi</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Ammortizzati &le;0.25€/g</div>
+      <div class="kpi-value" style="color:var(--green)">${amortized.length}/${active.length}</div>
+      <div class="kpi-sub">${fmt(amortPct,1)}% del totale attivi</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Prossimo traguardo</div>
+      <div class="kpi-value" style="font-size:1rem">${nextMilestone ? nextMilestone.product : '—'}</div>
+      <div class="kpi-sub">${nextMilestone ? nextMilestone.date : 'Tutti ammortizzati!'}</div>
+    </div>
+  `;
+}
+
+function renderCharts() {
+  const active = items.filter(i => !i.retired);
+  if (!active.length) {
+    document.getElementById('chartsGrid').innerHTML = '';
+    return;
+  }
+
+  // Ranking chart
+  const ranked = [...active].sort((a,b) => getCPD(a) - getCPD(b));
+  const maxCPD = Math.max(...ranked.map(i => getCPD(i)), 0.01);
+
+  let rankHTML = '<div class="chart-card"><h3>Ranking costo/giorno (attivi)</h3>';
+  ranked.forEach(item => {
+    const cpd = getCPD(item);
+    const pct = Math.max(3, (cpd / maxCPD) * 100);
+    const color = getCPDColor(cpd);
+    rankHTML += `<div class="chart-bar-row">
+      <span class="bar-label">${item.product}</span>
+      <span class="bar-track"><span class="bar-fill" style="width:${pct}%;background:${color}">${fmt(cpd,2)}</span></span>
+      <span class="bar-value">${fmt(cpd,2)} €/g</span>
+    </div>`;
+  });
+  rankHTML += '</div>';
+
+  // Category chart
+  const catTotals = {};
+  active.forEach(i => { catTotals[i.category] = (catTotals[i.category]||0) + i.price; });
+  const totalPrice = active.reduce((s,i) => s + i.price, 0);
+  const catEntries = Object.entries(catTotals).sort((a,b) => b[1] - a[1]);
+
+  let catHTML = '<div class="chart-card"><h3>Spesa per categoria (attivi)</h3>';
+  catEntries.forEach(([cat, total]) => {
+    const pct = (total / totalPrice) * 100;
+    const color = CAT_COLORS[cat] || CAT_COLORS.Altro;
+    catHTML += `<div class="chart-bar-row">
+      <span class="bar-label">${cat}</span>
+      <span class="bar-track"><span class="bar-fill" style="width:${pct}%;background:${color}">${fmt(pct,1)}%</span></span>
+      <span class="bar-value">${fmtEur(total)}</span>
+    </div>`;
+  });
+  catHTML += '</div>';
+
+  document.getElementById('chartsGrid').innerHTML = rankHTML + catHTML;
+}
+
+function renderFilters() {
+  const cats = [...new Set(items.map(i => i.category))].sort();
+  document.getElementById('filtersBar').innerHTML = `
+    <div class="filter-group">
+      <label>Stato</label>
+      <select onchange="filterStatus=this.value;render()">
+        <option value="all"${filterStatus==='all'?' selected':''}>Tutti</option>
+        <option value="active"${filterStatus==='active'?' selected':''}>Attivi</option>
+        <option value="retired"${filterStatus==='retired'?' selected':''}>Ritirati</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Categoria</label>
+      <select onchange="filterCategory=this.value;render()">
+        <option value="all"${filterCategory==='all'?' selected':''}>Tutte</option>
+        ${cats.map(c => `<option value="${c}"${filterCategory===c?' selected':''}>${c}</option>`).join('')}
+      </select>
+    </div>
+    <div class="spacer"></div>
+    <div class="filter-group">
+      <label>Ordina per</label>
+      <select onchange="sortBy=this.value;render()">
+        <option value="cpd_asc"${sortBy==='cpd_asc'?' selected':''}>€/giorno ↑</option>
+        <option value="price_desc"${sortBy==='price_desc'?' selected':''}>Prezzo ↓</option>
+        <option value="days_desc"${sortBy==='days_desc'?' selected':''}>Durata ↓</option>
+        <option value="progress_desc"${sortBy==='progress_desc'?' selected':''}>Progresso ↓</option>
+      </select>
+    </div>
+  `;
+}
+
+function renderTable() {
+  const list = getFilteredItems();
+  if (!list.length) {
+    document.getElementById('tableWrap').innerHTML = '<div class="empty">Nessun prodotto trovato</div>';
+    return;
+  }
+  let html = `<table>
+    <thead><tr>
+      <th>Prodotto</th><th>Categoria</th><th>Acquisto</th><th>Prezzo</th>
+      <th>Giorni</th><th>€/giorno</th><th>Soglie</th><th>Progresso → 0.25€/g</th><th>Stato</th><th>Azioni</th>
+    </tr></thead><tbody>`;
+
+  list.forEach(item => {
+    const cpd = getCPD(item);
+    const days = getDays(item);
+    const progress = getProgressPct(item);
+    const catColor = CAT_COLORS[item.category] || CAT_COLORS.Altro;
+    const rowClass = item.retired ? ' class="retired-row"' : '';
+
+    const thresholds = THRESHOLDS.map(t => {
+      const ok = getThresholdReached(item, t);
+      return `<span class="threshold-badge ${ok?'threshold-ok':'threshold-no'}" title="${t}€/g">${ok?'✓':'✗'}${fmt(t,2)}</span>`;
+    }).join(' ');
+
+    const progressColor = getCPDColor(cpd);
+    const statusBadge = item.retired
+      ? `<span class="badge badge-retired">⏸ Ritirato${item.retiredDate ? ' ' + item.retiredDate : ''}</span>`
+      : '<span class="badge badge-active">● Attivo</span>';
+
+    const retireBtn = item.retired
+      ? `<button title="Riattiva" onclick="retireProduct('${item.id}')">▶️</button>`
+      : `<button title="Ritira" onclick="retireProduct('${item.id}')">⏸</button>`;
+
+    html += `<tr${rowClass}>
+      <td class="product-name">${item.product}</td>
+      <td><span class="badge-cat" style="background:${catColor}22;color:${catColor}">${item.category}</span></td>
+      <td class="mono">${item.date}</td>
+      <td class="mono">${fmtEur(item.price)}</td>
+      <td class="mono">${days.toLocaleString('it-IT')}</td>
+      <td class="mono" style="color:${getCPDColor(cpd)}">${fmt(cpd,2)}</td>
+      <td>${thresholds}</td>
+      <td>
+        <span class="progress-track"><span class="progress-fill" style="width:${progress}%;background:${progressColor}"></span></span>
+        <span class="progress-text">${fmt(progress,1)}%</span>
+      </td>
+      <td>${statusBadge}</td>
+      <td class="row-actions">
+        <button title="Modifica" onclick="openModal('${item.id}')">✏️</button>
+        ${retireBtn}
+        <button title="Elimina" onclick="deleteProduct('${item.id}')">🗑️</button>
+      </td>
+    </tr>`;
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('tableWrap').innerHTML = html;
+}
+
+function renderRetiredSection() {
+  const retired = items.filter(i => i.retired);
+  const section = document.getElementById('retiredSection');
+  if (!retired.length) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = 'block';
+  const totalSpent = retired.reduce((s,i) => s + i.price, 0);
+  const avgDays = retired.reduce((s,i) => s + getDays(i), 0) / retired.length;
+  const avgYears = avgDays / 365.25;
+  const avgCPD = retired.reduce((s,i) => s + getCPD(i), 0) / retired.length;
+  const best = [...retired].sort((a,b) => getCPD(a) - getCPD(b))[0];
+
+  let html = `<h3>📦 Prodotti ritirati (${retired.length})</h3>
+    <div class="retired-stats">
+      <div class="retired-stat"><div class="rs-val">${fmtEur(totalSpent)}</div><div class="rs-label">Spesa totale</div></div>
+      <div class="retired-stat"><div class="rs-val">${fmt(avgDays,0)} g</div><div class="rs-label">Durata media (${fmt(avgYears,1)} anni)</div></div>
+      <div class="retired-stat"><div class="rs-val">${fmt(avgCPD,2)} €/g</div><div class="rs-label">Costo medio/giorno</div></div>
+      <div class="retired-stat"><div class="rs-val">${best ? best.product : '—'}</div><div class="rs-label">Miglior ammortamento${best ? ' (' + fmt(getCPD(best),2) + ' €/g)' : ''}</div></div>
+    </div>
+    <div class="retired-list">`;
+
+  retired.sort((a,b) => getCPD(a) - getCPD(b)).forEach(item => {
+    const cpd = getCPD(item);
+    const days = getDays(item);
+    html += `<div class="retired-item">
+      <span class="ri-name">${item.product}</span>
+      <span class="ri-period">${item.date} → ${item.retiredDate || '?'}</span>
+      <span class="ri-cost mono" style="color:${getCPDColor(cpd)}">${fmt(cpd,2)} €/g</span>
+      <span class="ri-days">${days} giorni</span>
+    </div>`;
+  });
+
+  html += '</div>';
+  section.innerHTML = html;
+}
+
+function render() {
+  renderKPIs();
+  renderCharts();
+  renderFilters();
+  renderTable();
+  renderRetiredSection();
+}
+
+// ---- INIT ----
+async function init() {
+  const loaded = load();
+  if (!loaded) {
+    // No local data; use defaults if no sync configured
+    if (!getSyncConfig()) {
+      items = DEFAULT_DATA.map(i => ({ ...i, id: uuid(), retired: false, retiredDate: null, notes: '' }));
+      save();
+    }
+  }
+  updateSyncUI();
+  render();
+
+  // Auto-pull if sync configured
+  if (getSyncConfig()) {
+    try { await pullFromGist(); } catch(e) { /* offline, use local */ }
+  }
+
+  // Register service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+}
+
+init();
+</script>
+</body>
+</html>
