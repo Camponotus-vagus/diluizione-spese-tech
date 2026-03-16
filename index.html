@@ -453,7 +453,7 @@ function getMilestonesTooltip(item) {
   return THRESHOLDS.map(t => {
     const reached = getThresholdReached(item, t);
     const date = fmtDate(getMilestoneDate(item, t));
-    return `${fmt(t,2)}€/g: ${reached ? '✓ raggiunto' : date}`;
+    return `${fmt(t,2)}€/g: ${reached ? '✓ ' + date : date}`;
   }).join('\n');
 }
 
