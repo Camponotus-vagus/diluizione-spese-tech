@@ -220,7 +220,7 @@ tr.retired-row{opacity:.55}
     <h3>&#9881; Configurazione Sync</h3>
     <div id="syncConfigForm">
       <div class="settings-info">
-        Inserisci un <strong>GitHub Personal Access Token</strong> con scope <code>gist</code> per sincronizzare i dati tramite un Gist privato. Il token viene salvato solo nel localStorage del browser.
+        Inserisci un <strong>GitHub Personal Access Token</strong> con scope <code>gist</code> per sincronizzare i dati tramite un Gist privato. Il token viene salvato solo nel localStorage del browser. Per sicurezza usa preferibilmente un <strong>token fine-grained</strong> con permesso limitato ai Gist e una <strong>scadenza breve</strong>, e revocalo da GitHub se non lo usi più.
       </div>
       <div class="settings-row">
         <label>Token PAT</label>
@@ -418,6 +418,9 @@ function fmt(n, d=2) {
 function fmtEur(n) {
   return '€\u00A0' + fmt(n);
 }
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 
 function getCPD(item) {
   const end = item.retired && item.retiredDate ? item.retiredDate : today();
@@ -500,7 +503,7 @@ function updateSyncUI() {
     configForm.style.display = 'none';
     statusPanel.style.display = 'block';
     document.getElementById('syncStatusText').textContent = '🟢 Connesso';
-    document.getElementById('syncGistLink').innerHTML = '<a href="https://gist.github.com/' + cfg.gistId + '" target="_blank">' + cfg.gistId.slice(0,12) + '…</a>';
+    document.getElementById('syncGistLink').innerHTML = '<a href="https://gist.github.com/' + encodeURIComponent(cfg.gistId) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(cfg.gistId.slice(0,12)) + '…</a>';
     const lastSync = localStorage.getItem('sync_last');
     document.getElementById('syncLastTime').textContent = lastSync ? 'Ultimo sync: ' + new Date(lastSync).toLocaleString('it-IT') : '';
     setSyncStatus('🟢', 'Sync');
@@ -515,6 +518,7 @@ async function configureSync() {
   const token = document.getElementById('inputToken').value.trim();
   const gistId = document.getElementById('inputGistId').value.trim();
   if (!token) { alert('Inserisci il token PAT'); return; }
+  if (gistId && !/^[a-f0-9]+$/i.test(gistId)) { alert('Gist ID non valido (sono ammessi solo caratteri esadecimali)'); return; }
   setSyncStatus('🔄', 'Configurazione…');
   try {
     if (gistId) {
@@ -775,12 +779,18 @@ function handleImport(event) {
   reader.readAsText(file);
   event.target.value = '';
 }
+function csvCell(v) {
+  let s = String(v ?? '');
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;                       // neutralizza formula injection
+  if (/[";\n\r]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"'; // quoting RFC 4180
+  return s;
+}
 function exportCSV() {
-  const header = 'Prodotto;Categoria;Acquisto;Prezzo;Giorni;Euro/Giorno;Stato;Data Ritiro;Note\n';
+  const header = ['Prodotto','Categoria','Acquisto','Prezzo','Giorni','Euro/Giorno','Stato','Data Ritiro','Note'].map(csvCell).join(';') + '\n';
   const rows = items.map(i => {
     const cpd = getCPD(i);
     const days = getDays(i);
-    return [i.product, i.category, fmtDate(i.date), i.price.toFixed(2), days, cpd.toFixed(2), i.retired?'Ritirato':'Attivo', i.retiredDate?fmtDate(i.retiredDate):'', i.notes||''].join(';');
+    return [i.product, i.category, fmtDate(i.date), i.price.toFixed(2), days, cpd.toFixed(2), i.retired?'Ritirato':'Attivo', i.retiredDate?fmtDate(i.retiredDate):'', i.notes||''].map(csvCell).join(';');
   }).join('\n');
   const blob = new Blob(['\uFEFF' + header + rows], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
@@ -843,7 +853,7 @@ function renderKPIs() {
     </div>
     <div class="kpi-card">
       <div class="kpi-label">Prossimo traguardo</div>
-      <div class="kpi-value" style="font-size:1rem">${nextMilestone ? nextMilestone.product : '—'}</div>
+      <div class="kpi-value" style="font-size:1rem">${nextMilestone ? escapeHtml(nextMilestone.product) : '—'}</div>
       <div class="kpi-sub">${nextMilestone ? nextMilestone.date : 'Tutti ammortizzati!'}</div>
     </div>
   `;
@@ -866,7 +876,7 @@ function renderCharts() {
     const pct = Math.max(3, (cpd / maxCPD) * 100);
     const color = getCPDColor(cpd);
     rankHTML += `<div class="chart-bar-row">
-      <span class="bar-label">${item.product}</span>
+      <span class="bar-label">${escapeHtml(item.product)}</span>
       <span class="bar-track"><span class="bar-fill" style="width:${pct}%;background:${color}">${fmt(cpd,2)}</span></span>
       <span class="bar-value">${fmt(cpd,2)} €/g</span>
     </div>`;
@@ -884,7 +894,7 @@ function renderCharts() {
     const pct = (total / totalPrice) * 100;
     const color = CAT_COLORS[cat] || CAT_COLORS.Altro;
     catHTML += `<div class="chart-bar-row">
-      <span class="bar-label">${cat}</span>
+      <span class="bar-label">${escapeHtml(cat)}</span>
       <span class="bar-track"><span class="bar-fill" style="width:${pct}%;background:${color}">${fmt(pct,1)}%</span></span>
       <span class="bar-value">${fmtEur(total)}</span>
     </div>`;
@@ -901,7 +911,7 @@ function renderFilters() {
       <label>Categoria</label>
       <select onchange="filterCategory=this.value;render()">
         <option value="all"${filterCategory==='all'?' selected':''}>Tutte</option>
-        ${cats.map(c => `<option value="${c}"${filterCategory===c?' selected':''}>${c}</option>`).join('')}
+        ${cats.map(c => `<option value="${escapeHtml(c)}"${filterCategory===c?' selected':''}>${escapeHtml(c)}</option>`).join('')}
       </select>
     </div>
     <div class="spacer"></div>
@@ -943,8 +953,8 @@ function renderTable() {
     const tooltip = getMilestonesTooltip(item);
 
     html += `<tr>
-      <td class="product-name">${item.product}</td>
-      <td><span class="badge-cat" style="background:${catColor}22;color:${catColor}">${item.category}</span></td>
+      <td class="product-name">${escapeHtml(item.product)}</td>
+      <td><span class="badge-cat" style="background:${catColor}22;color:${catColor}">${escapeHtml(item.category)}</span></td>
       <td class="mono">${fmtDate(item.date)}</td>
       <td class="mono">${fmtEur(item.price)}</td>
       <td class="mono">${days.toLocaleString('it-IT')}</td>
@@ -958,9 +968,9 @@ function renderTable() {
         </span>
       </td>
       <td class="row-actions">
-        <button title="Modifica" onclick="openModal('${item.id}')">✏️</button>
-        <button title="Ritira" onclick="retireProduct('${item.id}')">⏸</button>
-        <button title="Elimina" onclick="deleteProduct('${item.id}')">🗑️</button>
+        <button title="Modifica" data-action="edit" data-id="${escapeHtml(item.id)}">✏️</button>
+        <button title="Ritira" data-action="retire" data-id="${escapeHtml(item.id)}">⏸</button>
+        <button title="Elimina" data-action="delete" data-id="${escapeHtml(item.id)}">🗑️</button>
       </td>
     </tr>`;
   });
@@ -988,7 +998,7 @@ function renderRetiredSection() {
       <div class="retired-stat"><div class="rs-val">${fmtEur(totalSpent)}</div><div class="rs-label">Spesa totale</div></div>
       <div class="retired-stat"><div class="rs-val">${fmt(avgDays,0)} g</div><div class="rs-label">Durata media (${fmt(avgYears,1)} anni)</div></div>
       <div class="retired-stat"><div class="rs-val">${fmt(avgCPD,2)} €/g</div><div class="rs-label">Costo medio/giorno</div></div>
-      <div class="retired-stat"><div class="rs-val">${best ? best.product : '—'}</div><div class="rs-label">Miglior ammortamento${best ? ' (' + fmt(getCPD(best),2) + ' €/g)' : ''}</div></div>
+      <div class="retired-stat"><div class="rs-val">${best ? escapeHtml(best.product) : '—'}</div><div class="rs-label">Miglior ammortamento${best ? ' (' + fmt(getCPD(best),2) + ' €/g)' : ''}</div></div>
     </div>
     <div class="retired-list">`;
 
@@ -996,14 +1006,14 @@ function renderRetiredSection() {
     const cpd = getCPD(item);
     const days = getDays(item);
     html += `<div class="retired-item">
-      <span class="ri-name">${item.product}</span>
+      <span class="ri-name">${escapeHtml(item.product)}</span>
       <span class="ri-period">${fmtDate(item.date)} → ${fmtDate(item.retiredDate)}</span>
       <span class="ri-cost mono" style="color:${getCPDColor(cpd)}">${fmt(cpd,2)} €/g</span>
       <span class="ri-days">${days} giorni</span>
       <span class="row-actions">
-        <button title="Modifica" onclick="openModal('${item.id}')">✏️</button>
-        <button title="Riattiva" onclick="retireProduct('${item.id}')">▶️</button>
-        <button title="Elimina" onclick="deleteProduct('${item.id}')">🗑️</button>
+        <button title="Modifica" data-action="edit" data-id="${escapeHtml(item.id)}">✏️</button>
+        <button title="Riattiva" data-action="retire" data-id="${escapeHtml(item.id)}">▶️</button>
+        <button title="Elimina" data-action="delete" data-id="${escapeHtml(item.id)}">🗑️</button>
       </span>
     </div>`;
   });
@@ -1020,8 +1030,21 @@ function render() {
   renderRetiredSection();
 }
 
+// ---- ROW ACTIONS (event delegation) ----
+function handleRowAction(e) {
+  const btn = e.target.closest('button[data-action]');
+  if (!btn) return;
+  const id = btn.getAttribute('data-id');
+  switch (btn.getAttribute('data-action')) {
+    case 'edit': openModal(id); break;
+    case 'retire': retireProduct(id); break;
+    case 'delete': deleteProduct(id); break;
+  }
+}
+
 // ---- INIT ----
 async function init() {
+  document.addEventListener('click', handleRowAction);
   const loaded = load();
   if (!loaded) {
     // No local data; use defaults if no sync configured
