@@ -414,7 +414,9 @@ function daysBetween(a, b) {
   return Math.max(1, Math.round((new Date(b) - new Date(a)) / 86400000));
 }
 function today() {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 10);
 }
 function fmtDate(iso) { if (!iso) return '?'; const [y,m,d] = iso.split('-'); return `${d}-${m}-${y}`; }
 function fmt(n, d=2) {
@@ -453,7 +455,7 @@ function getCPDColor(cpd) {
   return 'var(--red)';
 }
 function getMilestoneDate(item, threshold) {
-  const daysNeeded = item.price / threshold;
+  const daysNeeded = Math.ceil(item.price / threshold);
   const d = new Date(new Date(item.date).getTime() + daysNeeded * 86400000);
   return d.toISOString().slice(0, 10);
 }
@@ -469,11 +471,13 @@ function getMilestonesTooltip(item) {
 function touchData() { dataLastModified = new Date().toISOString(); }
 function normalizeItems(arr) {
   if (!Array.isArray(arr)) return [];
+  const todayMs = Date.parse(today());
   return arr.map(i => {
     i = i || {};
     const price = Number(i.price);
     const dateOk = typeof i.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(i.date) && !isNaN(Date.parse(i.date));
     const rdOk = typeof i.retiredDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(i.retiredDate) && !isNaN(Date.parse(i.retiredDate));
+    const rdValid = rdOk && dateOk && Date.parse(i.retiredDate) >= Date.parse(i.date) && Date.parse(i.retiredDate) <= todayMs;
     const retired = !!i.retired;
     return {
       id: (typeof i.id === 'string' && /^[\w-]{1,64}$/.test(i.id)) ? i.id : uuid(),
@@ -482,7 +486,7 @@ function normalizeItems(arr) {
       price: (isFinite(price) && price > 0) ? price : null,
       category: CATEGORIES.includes(i.category) ? i.category : 'Altro',
       retired,
-      retiredDate: retired && rdOk ? i.retiredDate : null,
+      retiredDate: retired && rdValid ? i.retiredDate : null,
       notes: i.notes != null ? String(i.notes) : ''
     };
   }).filter(i => i.date && i.price != null);
@@ -747,8 +751,16 @@ function saveProduct() {
     item.price = price;
     item.notes = notes;
     const status = document.getElementById('fStatus').value;
-    item.retired = status === 'retired';
-    item.retiredDate = item.retired ? (document.getElementById('fRetiredDate').value || today()) : null;
+    if (status === 'retired') {
+      const rd = document.getElementById('fRetiredDate').value || today();
+      if (rd < date) { alert('La data di ritiro non può precedere la data di acquisto'); return; }
+      if (rd > today()) { alert('La data di ritiro non può essere nel futuro'); return; }
+      item.retired = true;
+      item.retiredDate = rd;
+    } else {
+      item.retired = false;
+      item.retiredDate = null;
+    }
   } else {
     items.push({ id: uuid(), product, date, price, category, retired: false, retiredDate: null, notes });
   }
@@ -857,7 +869,8 @@ function getFilteredItems() {
 function renderKPIs() {
   const active = items.filter(i => !i.retired);
   const totalActive = active.reduce((s,i) => s + i.price, 0);
-  const avgCPD = active.length ? active.reduce((s,i) => s + getCPD(i), 0) / active.length : 0;
+  const totalDays = active.reduce((s,i) => s + getDays(i), 0);
+  const avgCPD = totalDays ? totalActive / totalDays : 0;
   const amortized = active.filter(i => getCPD(i) <= 0.25);
   const amortPct = active.length ? (amortized.length / active.length * 100) : 0;
 
@@ -879,7 +892,7 @@ function renderKPIs() {
     <div class="kpi-card">
       <div class="kpi-label">Costo medio/giorno</div>
       <div class="kpi-value" style="color:${getCPDColor(avgCPD)}">${fmt(avgCPD,2)} €/g</div>
-      <div class="kpi-sub">media prodotti attivi</div>
+      <div class="kpi-sub">media ponderata (spesa/giorni)</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">Ammortizzati &le;0.25€/g</div>
@@ -1025,7 +1038,8 @@ function renderRetiredSection() {
   const totalSpent = retired.reduce((s,i) => s + i.price, 0);
   const avgDays = retired.reduce((s,i) => s + getDays(i), 0) / retired.length;
   const avgYears = avgDays / 365.25;
-  const avgCPD = retired.reduce((s,i) => s + getCPD(i), 0) / retired.length;
+  const retiredDays = retired.reduce((s,i) => s + getDays(i), 0);
+  const avgCPD = retiredDays ? totalSpent / retiredDays : 0;
   const best = [...retired].sort((a,b) => getCPD(a) - getCPD(b))[0];
 
   let html = `<h3>📦 Prodotti ritirati (${retired.length})</h3>
