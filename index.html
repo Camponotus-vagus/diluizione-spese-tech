@@ -13,7 +13,7 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
 --bg:#0c0f1a;--card:rgba(255,255,255,0.03);--card-border:rgba(255,255,255,0.07);
---text:#e2e8f0;--text-dim:#94a3b8;--text-muted:#64748b;
+--text:#e2e8f0;--text-dim:#94a3b8;--text-muted:#8b97ac;
 --green:#10b981;--blue:#3b82f6;--amber:#f59e0b;--orange:#f97316;--red:#ef4444;
 --purple:#8b5cf6;--pink:#ec4899;--cyan:#06b6d4;--gray:#6b7280;
 --radius:10px;--font:'DM Sans',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
@@ -23,7 +23,7 @@
 }
 [data-theme="light"]{
 --bg:#f8fafc;--card:rgba(0,0,0,0.02);--card-border:rgba(0,0,0,0.08);
---text:#1e293b;--text-dim:#475569;--text-muted:#94a3b8;
+--text:#1e293b;--text-dim:#475569;--text-muted:#5e6b7d;
 --modal-bg:#ffffff;--input-bg:rgba(0,0,0,0.03);--overlay:rgba(0,0,0,.3);
 --logo-text:#ffffff;--bar-track:rgba(0,0,0,.06);--progress-track:rgba(0,0,0,.08);
 --thead-bg:rgba(0,0,0,.02);--status-bg:rgba(0,0,0,.02);
@@ -33,6 +33,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 h1,h2,h3{font-weight:600}
 button{font-family:var(--font);cursor:pointer;border:none;outline:none}
 input,select,textarea{font-family:var(--font);outline:none}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible,.progress-wrap:focus-visible{outline:2px solid var(--green);outline-offset:2px;border-radius:4px}
 
 /* Scrollbar */
 ::-webkit-scrollbar{width:6px;height:6px}
@@ -109,7 +110,7 @@ tr.retired-row{opacity:.55}
 .progress-text{font-family:var(--mono);font-size:.7rem;color:var(--text-dim);margin-left:6px}
 .progress-wrap{position:relative;display:inline-flex;align-items:center;cursor:help}
 .progress-wrap .progress-tooltip{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--modal-bg);border:1px solid var(--card-border);border-radius:8px;padding:8px 12px;font-family:var(--mono);font-size:.72rem;white-space:pre;z-index:50;box-shadow:0 4px 12px rgba(0,0,0,.2);color:var(--text);line-height:1.6}
-.progress-wrap:hover .progress-tooltip,.progress-wrap.touched .progress-tooltip{display:block}
+.progress-wrap:hover .progress-tooltip,.progress-wrap:focus .progress-tooltip,.progress-wrap:focus-within .progress-tooltip,.progress-wrap.touched .progress-tooltip{display:block}
 
 /* Actions */
 .row-actions{display:flex;gap:4px}
@@ -208,12 +209,12 @@ tr.retired-row{opacity:.55}
     <h1><span class="logo">💻</span> Diluizione Spese Tech</h1>
     <div class="header-actions">
       <span id="syncBadge" class="sync-badge" style="display:none"></span>
-      <div class="theme-toggle" id="themeToggle">
-        <button onclick="setTheme('light')" title="Chiaro">&#9728;</button>
-        <button onclick="setTheme('auto')" title="Auto">&#9684;</button>
-        <button onclick="setTheme('dark')" title="Scuro">&#9790;</button>
+      <div class="theme-toggle" id="themeToggle" role="group" aria-label="Tema">
+        <button type="button" onclick="setTheme('light')" title="Chiaro" aria-label="Tema chiaro">&#9728;</button>
+        <button type="button" onclick="setTheme('auto')" title="Auto" aria-label="Tema automatico">&#9684;</button>
+        <button type="button" onclick="setTheme('dark')" title="Scuro" aria-label="Tema scuro">&#9790;</button>
       </div>
-      <button class="btn-icon" onclick="toggleSettings()" title="Impostazioni sync">&#9881;</button>
+      <button type="button" class="btn-icon" onclick="toggleSettings()" title="Impostazioni sync" aria-label="Impostazioni sync">&#9881;</button>
       <button class="btn btn-primary" onclick="openModal()">+ Aggiungi</button>
     </div>
   </header>
@@ -226,11 +227,11 @@ tr.retired-row{opacity:.55}
         Inserisci un <strong>GitHub Personal Access Token</strong> con scope <code>gist</code> per sincronizzare i dati tramite un Gist privato. Il token viene salvato solo nel localStorage del browser. Per sicurezza usa preferibilmente un <strong>token fine-grained</strong> con permesso limitato ai Gist e una <strong>scadenza breve</strong>, e revocalo da GitHub se non lo usi più.
       </div>
       <div class="settings-row">
-        <label>Token PAT</label>
+        <label for="inputToken">Token PAT</label>
         <input type="password" id="inputToken" placeholder="ghp_xxxxxxxxxxxx">
       </div>
       <div class="settings-row">
-        <label>Gist ID</label>
+        <label for="inputGistId">Gist ID</label>
         <input type="text" id="inputGistId" placeholder="(opzionale — ne creeremo uno nuovo)">
       </div>
       <div class="settings-actions">
@@ -278,15 +279,15 @@ tr.retired-row{opacity:.55}
 
 <!-- Modal -->
 <div class="modal-overlay" id="modalOverlay" onclick="event.target===this&&closeModal()">
-  <div class="modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <h2 id="modalTitle">Aggiungi prodotto</h2>
     <div class="form-row">
       <div class="form-group">
-        <label>Prodotto *</label>
+        <label for="fProduct">Prodotto *</label>
         <input type="text" id="fProduct" required>
       </div>
       <div class="form-group">
-        <label>Categoria *</label>
+        <label for="fCategory">Categoria *</label>
         <select id="fCategory">
           <option value="Audio">Audio</option>
           <option value="Laptop">Laptop</option>
@@ -303,31 +304,31 @@ tr.retired-row{opacity:.55}
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label>Data acquisto *</label>
+        <label for="fDate">Data acquisto *</label>
         <input type="date" id="fDate">
       </div>
       <div class="form-group">
-        <label>Prezzo (€) *</label>
+        <label for="fPrice">Prezzo (€) *</label>
         <input type="number" id="fPrice" step="0.01" min="0">
       </div>
     </div>
     <div id="editFields" style="display:none">
       <div class="form-row">
         <div class="form-group">
-          <label>Stato</label>
+          <label for="fStatus">Stato</label>
           <select id="fStatus">
             <option value="active">Attivo</option>
             <option value="retired">Ritirato</option>
           </select>
         </div>
         <div class="form-group">
-          <label>Data ritiro</label>
+          <label for="fRetiredDate">Data ritiro</label>
           <input type="date" id="fRetiredDate">
         </div>
       </div>
     </div>
     <div class="form-group">
-      <label>Note</label>
+      <label for="fNotes">Note</label>
       <textarea id="fNotes" rows="2"></textarea>
     </div>
     <div class="modal-actions">
@@ -339,7 +340,7 @@ tr.retired-row{opacity:.55}
 
 <!-- Confirm dialog -->
 <div class="confirm-overlay" id="confirmOverlay">
-  <div class="confirm-box">
+  <div class="confirm-box" role="alertdialog" aria-modal="true" aria-describedby="confirmMsg">
     <p id="confirmMsg"></p>
     <div class="confirm-actions">
       <button class="btn btn-secondary" onclick="closeConfirm(false)">Annulla</button>
@@ -365,7 +366,11 @@ function setTheme(mode) {
 function updateThemeToggle(mode) {
   const btns = document.querySelectorAll('#themeToggle button');
   const modes = ['light', 'auto', 'dark'];
-  btns.forEach((b, i) => b.classList.toggle('active', modes[i] === mode));
+  btns.forEach((b, i) => {
+    const on = modes[i] === mode;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-pressed', on);
+  });
 }
 function initTheme() {
   const saved = localStorage.getItem('theme') || 'auto';
@@ -686,22 +691,53 @@ async function runPush() {
   }
 }
 
+// ---- FOCUS MANAGEMENT (modal/confirm a11y) ----
+let lastFocused = null;
+function getFocusable(container) {
+  return Array.from(container.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'))
+    .filter(el => el.offsetParent !== null);
+}
+function trapFocus(e, container) {
+  if (e.key !== 'Tab') return;
+  const f = getFocusable(container);
+  if (!f.length) return;
+  const first = f[0], last = f[f.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+}
+function handleGlobalKeydown(e) {
+  const confirmOv = document.getElementById('confirmOverlay');
+  const modalOv = document.getElementById('modalOverlay');
+  if (confirmOv.classList.contains('active')) {
+    if (e.key === 'Escape') closeConfirm(false);
+    else trapFocus(e, confirmOv);
+  } else if (modalOv.classList.contains('active')) {
+    if (e.key === 'Escape') closeModal();
+    else trapFocus(e, modalOv);
+  }
+}
+
 // ---- CONFIRM ----
 function showConfirm(msg) {
   return new Promise(resolve => {
     confirmResolve = resolve;
+    lastFocused = document.activeElement;
     document.getElementById('confirmMsg').textContent = msg;
     document.getElementById('confirmOverlay').classList.add('active');
+    const cancelBtn = document.querySelector('#confirmOverlay .confirm-actions button');
+    if (cancelBtn) cancelBtn.focus();
   });
 }
 function closeConfirm(result) {
   document.getElementById('confirmOverlay').classList.remove('active');
   if (confirmResolve) { confirmResolve(result); confirmResolve = null; }
+  if (lastFocused && lastFocused.focus) { lastFocused.focus(); lastFocused = null; }
 }
 
 // ---- MODAL ----
 function openModal(id) {
   editingId = id || null;
+  lastFocused = document.activeElement;
   const modal = document.getElementById('modalOverlay');
   document.getElementById('modalTitle').textContent = id ? 'Modifica prodotto' : 'Aggiungi prodotto';
   document.getElementById('editFields').style.display = id ? 'block' : 'none';
@@ -730,6 +766,7 @@ function openModal(id) {
 function closeModal() {
   document.getElementById('modalOverlay').classList.remove('active');
   editingId = null;
+  if (lastFocused && lastFocused.focus) { lastFocused.focus(); lastFocused = null; }
 }
 
 function saveProduct() {
@@ -957,7 +994,7 @@ function renderFilters() {
   document.getElementById('filtersBar').innerHTML = `
     <div class="filter-group">
       <label>Categoria</label>
-      <select onchange="filterCategory=this.value;render()">
+      <select aria-label="Filtra per categoria" onchange="filterCategory=this.value;render()">
         <option value="all"${filterCategory==='all'?' selected':''}>Tutte</option>
         ${cats.map(c => `<option value="${escapeHtml(c)}"${filterCategory===c?' selected':''}>${escapeHtml(c)}</option>`).join('')}
       </select>
@@ -965,7 +1002,7 @@ function renderFilters() {
     <div class="spacer"></div>
     <div class="filter-group">
       <label>Ordina per</label>
-      <select onchange="sortBy=this.value;render()">
+      <select aria-label="Ordina per" onchange="sortBy=this.value;render()">
         <option value="cpd_asc"${sortBy==='cpd_asc'?' selected':''}>€/giorno ↑</option>
         <option value="price_desc"${sortBy==='price_desc'?' selected':''}>Prezzo ↓</option>
         <option value="days_desc"${sortBy==='days_desc'?' selected':''}>Durata ↓</option>
@@ -1009,16 +1046,16 @@ function renderTable() {
       <td class="mono" style="color:${getCPDColor(cpd)}">${fmt(cpd,2)}</td>
       <td>${thresholds}</td>
       <td>
-        <span class="progress-wrap" ontouchstart="this.classList.toggle('touched')" ontouchend="setTimeout(()=>this.classList.remove('touched'),2000)">
+        <span class="progress-wrap" tabindex="0" role="img" aria-label="Traguardi: ${escapeHtml(tooltip.replace(/\n/g, '; '))}" ontouchstart="this.classList.toggle('touched')" ontouchend="setTimeout(()=>this.classList.remove('touched'),2000)">
           <span class="progress-track"><span class="progress-fill" style="width:${progress}%;background:${progressColor}"></span></span>
           <span class="progress-text">${fmt(progress,1)}%</span>
           <span class="progress-tooltip">${tooltip}</span>
         </span>
       </td>
       <td class="row-actions">
-        <button title="Modifica" data-action="edit" data-id="${escapeHtml(item.id)}">✏️</button>
-        <button title="Ritira" data-action="retire" data-id="${escapeHtml(item.id)}">⏸</button>
-        <button title="Elimina" data-action="delete" data-id="${escapeHtml(item.id)}">🗑️</button>
+        <button type="button" title="Modifica" aria-label="Modifica ${escapeHtml(item.product)}" data-action="edit" data-id="${escapeHtml(item.id)}">✏️</button>
+        <button type="button" title="Ritira" aria-label="Ritira ${escapeHtml(item.product)}" data-action="retire" data-id="${escapeHtml(item.id)}">⏸</button>
+        <button type="button" title="Elimina" aria-label="Elimina ${escapeHtml(item.product)}" data-action="delete" data-id="${escapeHtml(item.id)}">🗑️</button>
       </td>
     </tr>`;
   });
@@ -1060,9 +1097,9 @@ function renderRetiredSection() {
       <span class="ri-cost mono" style="color:${getCPDColor(cpd)}">${fmt(cpd,2)} €/g</span>
       <span class="ri-days">${days} giorni</span>
       <span class="row-actions">
-        <button title="Modifica" data-action="edit" data-id="${escapeHtml(item.id)}">✏️</button>
-        <button title="Riattiva" data-action="retire" data-id="${escapeHtml(item.id)}">▶️</button>
-        <button title="Elimina" data-action="delete" data-id="${escapeHtml(item.id)}">🗑️</button>
+        <button type="button" title="Modifica" aria-label="Modifica ${escapeHtml(item.product)}" data-action="edit" data-id="${escapeHtml(item.id)}">✏️</button>
+        <button type="button" title="Riattiva" aria-label="Riattiva ${escapeHtml(item.product)}" data-action="retire" data-id="${escapeHtml(item.id)}">▶️</button>
+        <button type="button" title="Elimina" aria-label="Elimina ${escapeHtml(item.product)}" data-action="delete" data-id="${escapeHtml(item.id)}">🗑️</button>
       </span>
     </div>`;
   });
@@ -1113,6 +1150,7 @@ function showUpdateToast(reg) {
 // ---- INIT ----
 async function init() {
   document.addEventListener('click', handleRowAction);
+  document.addEventListener('keydown', handleGlobalKeydown);
   const loaded = load();
   if (!loaded) {
     // No local data; use defaults if no sync configured
