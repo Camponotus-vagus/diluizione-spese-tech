@@ -1,4 +1,4 @@
-const CACHE_NAME = 'spese-tech-v3';
+const CACHE_NAME = 'spese-tech-v4';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -6,12 +6,14 @@ const STATIC_ASSETS = [
   './icons/icon-192.png',
   './icons/icon-512.png'
 ];
+const FONT_ORIGINS = ['https://fonts.googleapis.com', 'https://fonts.gstatic.com'];
 
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS))
   );
-  self.skipWaiting();
+  // No skipWaiting(): the new worker waits until the page asks to update,
+  // so we can prompt the user instead of swapping versions silently.
 });
 
 self.addEventListener('activate', event => {
@@ -20,45 +22,50 @@ self.addEventListener('activate', event => {
       Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
     )
   );
-  self.clients.claim();
+  // No clients.claim(): avoids reloading the page on first install; on updates
+  // the page already has a controller and skipWaiting() transfers control to it.
+});
+
+self.addEventListener('message', event => {
+  if (event.data === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
+  const req = event.request;
+  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
 
-  // Network-first for GitHub API calls
+  // Network-only (cache fallback) for GitHub API calls
   if (url.hostname === 'api.github.com') {
-    event.respondWith(
-      fetch(event.request).catch(() => caches.match(event.request))
-    );
+    event.respondWith(fetch(req).catch(() => caches.match(req)));
     return;
   }
 
-  // Network-first for HTML (always get latest version)
-  if (event.request.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname.endsWith('/')) {
+  // Network-first for navigations / HTML (always get the latest version)
+  if (req.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname.endsWith('/')) {
     event.respondWith(
-      fetch(event.request).then(response => {
+      fetch(req).then(response => {
         if (response.ok) {
           const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+          caches.open(CACHE_NAME).then(cache => cache.put(req, clone));
         }
         return response;
-      }).catch(() => caches.match(event.request))
+      }).catch(() => caches.match(req).then(c => c || caches.match('./index.html')))
     );
     return;
   }
 
-  // Cache-first for other static assets (fonts, icons)
-  event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) return cached;
-      return fetch(event.request).then(response => {
-        if (response.ok && event.request.method === 'GET') {
+  // Cache-first only for trusted origins: same-origin assets + Google Fonts.
+  // Other origins are left to the browser (no opaque cross-origin cache poisoning).
+  if (url.origin === self.location.origin || FONT_ORIGINS.includes(url.origin)) {
+    event.respondWith(
+      caches.match(req).then(cached => cached || fetch(req).then(response => {
+        if (response && (response.ok || response.type === 'opaque')) {
           const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+          caches.open(CACHE_NAME).then(cache => cache.put(req, clone));
         }
         return response;
-      });
-    }).catch(() => caches.match('./index.html'))
-  );
+      }))
+    );
+  }
 });
