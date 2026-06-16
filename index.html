@@ -820,11 +820,9 @@ function renderKPIs() {
   const notAmortized = active.filter(i => getCPD(i) > 0.25);
   let nextMilestone = null;
   if (notAmortized.length) {
-    notAmortized.sort((a,b) => getProgressPct(b) - getProgressPct(a));
+    notAmortized.sort((a,b) => new Date(getMilestoneDate(a, 0.25)) - new Date(getMilestoneDate(b, 0.25)));
     const closest = notAmortized[0];
-    const daysNeeded = closest.price / 0.25;
-    const targetDate = new Date(new Date(closest.date).getTime() + daysNeeded * 86400000);
-    nextMilestone = { product: closest.product, date: fmtDate(targetDate.toISOString().slice(0,10)) };
+    nextMilestone = { product: closest.product, date: fmtDate(getMilestoneDate(closest, 0.25)) };
   }
 
   document.getElementById('kpiGrid').innerHTML = `
