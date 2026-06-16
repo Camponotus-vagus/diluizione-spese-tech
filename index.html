@@ -400,6 +400,8 @@ let filterStatus = 'all';
 let filterCategory = 'all';
 let sortBy = 'cpd_asc';
 let confirmResolve = null;
+let dataLastModified = null;
+let pushTimer = null, pushInFlight = false, pushQueued = false;
 
 // ---- UTILS ----
 function uuid() {
@@ -458,28 +460,44 @@ function getMilestonesTooltip(item) {
 }
 
 // ---- PERSISTENCE ----
+function touchData() { dataLastModified = new Date().toISOString(); }
+function normalizeItems(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(i => {
+    i = i || {};
+    const price = Number(i.price);
+    const dateOk = typeof i.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(i.date) && !isNaN(Date.parse(i.date));
+    const rdOk = typeof i.retiredDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(i.retiredDate) && !isNaN(Date.parse(i.retiredDate));
+    const retired = !!i.retired;
+    return {
+      id: (typeof i.id === 'string' && /^[\w-]{1,64}$/.test(i.id)) ? i.id : uuid(),
+      product: i.product != null ? String(i.product) : '',
+      date: dateOk ? i.date : null,
+      price: (isFinite(price) && price > 0) ? price : null,
+      category: CATEGORIES.includes(i.category) ? i.category : 'Altro',
+      retired,
+      retiredDate: retired && rdOk ? i.retiredDate : null,
+      notes: i.notes != null ? String(i.notes) : ''
+    };
+  }).filter(i => i.date && i.price != null);
+}
 function save() {
-  const data = { items, lastModified: new Date().toISOString() };
-  localStorage.setItem('diluizione_data', JSON.stringify(data));
+  if (!dataLastModified) dataLastModified = new Date().toISOString();
+  localStorage.setItem('diluizione_data', JSON.stringify({ items, lastModified: dataLastModified }));
 }
 function load() {
   const raw = localStorage.getItem('diluizione_data');
   if (raw) {
     try {
       const parsed = JSON.parse(raw);
-      items = parsed.items || parsed;
+      items = normalizeItems(parsed.items || parsed);
+      dataLastModified = parsed.lastModified || new Date().toISOString();
       return true;
     } catch(e) {}
   }
   return false;
 }
-function getLastModified() {
-  const raw = localStorage.getItem('diluizione_data');
-  if (raw) {
-    try { return JSON.parse(raw).lastModified || null; } catch(e) {}
-  }
-  return null;
-}
+function getLastModified() { return dataLastModified; }
 
 // ---- SYNC ----
 function getSyncConfig() {
@@ -526,7 +544,7 @@ async function configureSync() {
       const res = await fetch('https://api.github.com/gists', {
         method: 'POST',
         headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description: 'Diluizione Spese Tech - Data', public: false, files: { 'diluizione_data.json': { content: JSON.stringify({ items: items, lastModified: new Date().toISOString() }) } } })
+        body: JSON.stringify({ description: 'Diluizione Spese Tech - Data', public: false, files: { 'diluizione_data.json': { content: JSON.stringify({ items: items, lastModified: dataLastModified }) } } })
       });
       if (!res.ok) throw new Error('Impossibile creare il Gist');
       const data = await res.json();
@@ -553,7 +571,7 @@ async function pushToGist() {
     const res = await fetch('https://api.github.com/gists/' + cfg.gistId, {
       method: 'PATCH',
       headers: { 'Authorization': 'token ' + cfg.token, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
-      body: JSON.stringify({ files: { 'diluizione_data.json': { content: JSON.stringify({ items, lastModified: new Date().toISOString() }) } } })
+      body: JSON.stringify({ files: { 'diluizione_data.json': { content: JSON.stringify({ items, lastModified: dataLastModified }) } } })
     });
     if (!res.ok) throw new Error('Push fallito');
     localStorage.setItem('sync_last', new Date().toISOString());
@@ -577,7 +595,8 @@ async function pullFromGist() {
     const file = data.files['diluizione_data.json'];
     if (file) {
       const parsed = JSON.parse(file.content);
-      items = parsed.items || parsed;
+      items = normalizeItems(parsed.items || parsed);
+      dataLastModified = parsed.lastModified || new Date().toISOString();
       save();
       render();
     }
@@ -603,13 +622,16 @@ async function doSync() {
     const file = data.files['diluizione_data.json'];
     if (file) {
       const remote = JSON.parse(file.content);
-      const remoteLM = remote.lastModified || '';
-      const localLM = getLastModified() || '';
-      if (remoteLM > localLM) {
-        items = remote.items || remote;
+      const remoteT = Date.parse(remote && remote.lastModified);
+      const localT = Date.parse(dataLastModified);
+      const r = isNaN(remoteT) ? -Infinity : remoteT;
+      const l = isNaN(localT) ? -Infinity : localT;
+      if (r > l) {
+        items = normalizeItems(remote.items || remote);
+        dataLastModified = remote.lastModified || new Date().toISOString();
         save();
         render();
-      } else {
+      } else if (l > r) {
         await pushToGist();
         return;
       }
@@ -629,12 +651,27 @@ function disconnectSync() {
   updateSyncUI();
 }
 
-async function afterModification() {
+function afterModification() {
+  touchData();
   save();
   render();
-  const cfg = getSyncConfig();
-  if (cfg) {
-    try { await pushToGist(); } catch(e) { setSyncStatus('🔴', 'Errore sync'); }
+  schedulePush();
+}
+
+function schedulePush() {
+  if (!getSyncConfig()) return;
+  setSyncStatus('🟡', 'Non sincronizzato');
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(runPush, 2000);
+}
+async function runPush() {
+  if (pushInFlight) { pushQueued = true; return; }
+  pushInFlight = true;
+  try {
+    await pushToGist();
+  } finally {
+    pushInFlight = false;
+    if (pushQueued) { pushQueued = false; runPush(); }
   }
 }
 
@@ -738,7 +775,7 @@ async function deleteProduct(id) {
 
 // ---- IMPORT/EXPORT ----
 function exportJSON() {
-  const blob = new Blob([JSON.stringify({ items, lastModified: new Date().toISOString() }, null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify({ items, lastModified: dataLastModified || new Date().toISOString() }, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'diluizione_spese_' + today() + '.json';
@@ -757,17 +794,12 @@ function handleImport(event) {
       const parsed = JSON.parse(e.target.result);
       const arr = parsed.items || parsed;
       if (!Array.isArray(arr)) throw new Error('Formato non valido');
-      items = arr.map(i => ({
-        id: i.id || uuid(),
-        product: i.product || '',
-        date: i.date || today(),
-        price: Number(i.price) || 0,
-        category: i.category || 'Altro',
-        retired: !!i.retired,
-        retiredDate: i.retiredDate || null,
-        notes: i.notes || ''
-      }));
+      const normalized = normalizeItems(arr);
+      if (!normalized.length) throw new Error('Nessun record valido nel file');
+      const dropped = arr.length - normalized.length;
+      items = normalized;
       afterModification();
+      if (dropped > 0) alert('Import completato: ' + normalized.length + ' prodotti importati, ' + dropped + ' record non validi scartati.');
     } catch(err) {
       alert('Errore importazione: ' + err.message);
     }
@@ -1026,17 +1058,28 @@ async function init() {
   if (!loaded) {
     // No local data; use defaults if no sync configured
     if (!getSyncConfig()) {
-      items = DEFAULT_DATA.map(i => ({ ...i, id: uuid(), retired: false, retiredDate: null, notes: '' }));
+      items = normalizeItems(DEFAULT_DATA);
       save();
     }
   }
   updateSyncUI();
   render();
 
-  // Auto-pull if sync configured
+  // Reconcile with remote if sync configured (takes the newer side, no data loss)
   if (getSyncConfig()) {
-    try { await pullFromGist(); } catch(e) { /* offline, use local */ }
+    try { await doSync(); } catch(e) { /* offline, use local */ }
   }
+
+  // Keep multiple tabs in sync
+  window.addEventListener('storage', (e) => {
+    if (e.key !== 'diluizione_data' || !e.newValue) return;
+    try {
+      const parsed = JSON.parse(e.newValue);
+      items = normalizeItems(parsed.items || parsed);
+      dataLastModified = parsed.lastModified || dataLastModified;
+      render();
+    } catch(_) {}
+  });
 
   // Register service worker
   if ('serviceWorker' in navigator) {
