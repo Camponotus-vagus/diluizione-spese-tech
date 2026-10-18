@@ -1,4 +1,5 @@
-const CACHE_NAME = 'spese-tech-v4';
+const CACHE_PREFIX = 'spese-tech-';
+const CACHE_NAME = CACHE_PREFIX + 'v5';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -19,7 +20,7 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+      Promise.all(keys.filter(k => k.startsWith(CACHE_PREFIX) && k !== CACHE_NAME).map(k => caches.delete(k)))
     )
   );
   // No clients.claim(): avoids reloading the page on first install; on updates
@@ -35,9 +36,9 @@ self.addEventListener('fetch', event => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
 
-  // Network-only (cache fallback) for GitHub API calls
+  // Network-only for GitHub API calls (never cached: they carry the auth token)
   if (url.hostname === 'api.github.com') {
-    event.respondWith(fetch(req).catch(() => caches.match(req)));
+    event.respondWith(fetch(req));
     return;
   }
 
@@ -45,12 +46,13 @@ self.addEventListener('fetch', event => {
   if (req.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname.endsWith('/')) {
     event.respondWith(
       fetch(req).then(response => {
-        if (response.ok) {
+        // Store under a query-less key so ?x=N links don't grow the cache unbounded
+        if (response.ok && url.origin === self.location.origin) {
           const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(req, clone));
+          caches.open(CACHE_NAME).then(cache => cache.put(url.origin + url.pathname, clone));
         }
         return response;
-      }).catch(() => caches.match(req).then(c => c || caches.match('./index.html')))
+      }).catch(() => caches.match(req, { ignoreSearch: true }).then(c => c || caches.match('./index.html')))
     );
     return;
   }
@@ -60,7 +62,8 @@ self.addEventListener('fetch', event => {
   if (url.origin === self.location.origin || FONT_ORIGINS.includes(url.origin)) {
     event.respondWith(
       caches.match(req).then(cached => cached || fetch(req).then(response => {
-        if (response && (response.ok || response.type === 'opaque')) {
+        // Opaque responses hide their status: don't pin a possible error forever
+        if (response && response.ok) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(req, clone));
         }

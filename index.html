@@ -2,9 +2,9 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.github.com; object-src 'none'; base-uri 'none'">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#10b981">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0c0f1a">
 <title>Diluizione Spese Tech</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
@@ -21,6 +21,7 @@
 --modal-bg:#141825;--input-bg:rgba(255,255,255,0.04);--overlay:rgba(0,0,0,.6);
 --logo-text:var(--bg);--bar-track:rgba(255,255,255,.04);--progress-track:rgba(255,255,255,.06);
 --thead-bg:rgba(255,255,255,.03);--status-bg:rgba(255,255,255,.02);
+--on-green:#04261a;color-scheme:dark;
 }
 [data-theme="light"]{
 --bg:#f8fafc;--card:rgba(0,0,0,0.02);--card-border:rgba(0,0,0,0.08);
@@ -28,6 +29,8 @@
 --modal-bg:#ffffff;--input-bg:rgba(0,0,0,0.03);--overlay:rgba(0,0,0,.3);
 --logo-text:#ffffff;--bar-track:rgba(0,0,0,.06);--progress-track:rgba(0,0,0,.08);
 --thead-bg:rgba(0,0,0,.02);--status-bg:rgba(0,0,0,.02);
+--green:#047857;--amber:#b45309;--orange:#c2410c;--red:#b91c1c;
+--on-green:#ffffff;color-scheme:light;
 }
 html{font-size:15px}
 body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;line-height:1.5}
@@ -45,7 +48,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .container{max-width:1400px;margin:0 auto;padding:0 20px 40px}
 header{display:flex;align-items:center;justify-content:space-between;padding:20px 0;flex-wrap:wrap;gap:12px}
 header h1{font-size:1.4rem;display:flex;align-items:center;gap:10px}
-header h1 span.logo{display:inline-flex;align-items:center;justify-content:center;font-size:1.6rem;line-height:1}
+header h1 span.logo{display:inline-flex;align-items:center;justify-content:center;font-size:1.6rem;line-height:1;user-select:none;-webkit-user-select:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+header h1 span.logo.spin{animation:logoSpin .9s cubic-bezier(.34,1.56,.64,1)}
+@keyframes logoSpin{0%{transform:rotate(0) scale(1)}50%{transform:rotate(200deg) scale(1.4)}100%{transform:rotate(360deg) scale(1)}}
 .header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 
 /* Sync indicator */
@@ -53,8 +58,8 @@ header h1 span.logo{display:inline-flex;align-items:center;justify-content:cente
 
 /* Buttons */
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius);font-size:.82rem;font-weight:500;transition:all .15s ease}
-.btn-primary{background:var(--green);color:#fff}
-.btn-primary:hover{background:#0ea472}
+.btn-primary{background:var(--green);color:var(--on-green);font-weight:600}
+.btn-primary:hover{filter:brightness(.92)}
 .btn-secondary{background:var(--card);border:1px solid var(--card-border);color:var(--text-dim)}
 .btn-secondary:hover{border-color:var(--text-muted);color:var(--text)}
 .btn-danger{background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.2)}
@@ -65,7 +70,7 @@ header h1 span.logo{display:inline-flex;align-items:center;justify-content:cente
 
 /* KPI Cards */
 .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
-.kpi-card{background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:20px;animation:fadeIn .3s ease}
+.kpi-card{background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:20px;animation:fadeIn .3s ease;min-width:0;overflow-wrap:anywhere}
 .kpi-card .kpi-label{font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
 .kpi-card .kpi-value{font-family:var(--mono);font-size:1.6rem;font-weight:600}
 .kpi-card .kpi-sub{font-size:.75rem;color:var(--text-dim);margin-top:4px}
@@ -78,7 +83,7 @@ header h1 span.logo{display:inline-flex;align-items:center;justify-content:cente
 .chart-bar-row .bar-label{width:160px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right;color:var(--text-dim)}
 .chart-bar-row .bar-track{flex:1;height:22px;background:var(--input-bg);border-radius:4px;overflow:hidden;position:relative}
 .chart-bar-row .bar-fill{height:100%;border-radius:4px;transition:width .6s ease;display:flex;align-items:center;padding-left:8px;font-family:var(--mono);font-size:.7rem;font-weight:500;color:#fff;white-space:nowrap}
-.chart-bar-row .bar-value{font-family:var(--mono);width:70px;text-align:right;flex-shrink:0;color:var(--text-dim);font-size:.75rem}
+.chart-bar-row .bar-value{font-family:var(--mono);width:auto;min-width:70px;text-align:right;flex-shrink:0;color:var(--text-dim);font-size:.75rem}
 
 /* Filters */
 .filters-bar{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
@@ -111,10 +116,11 @@ tr.retired-row{opacity:.55}
 .progress-text{font-family:var(--mono);font-size:.7rem;color:var(--text-dim);margin-left:6px}
 .progress-wrap{position:relative;display:inline-flex;align-items:center;cursor:help}
 .progress-wrap .progress-tooltip{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--modal-bg);border:1px solid var(--card-border);border-radius:8px;padding:8px 12px;font-family:var(--mono);font-size:.72rem;white-space:pre;z-index:50;box-shadow:0 4px 12px rgba(0,0,0,.2);color:var(--text);line-height:1.6}
+tbody tr:first-child .progress-tooltip{bottom:auto;top:calc(100% + 8px)}
 .progress-wrap:hover .progress-tooltip,.progress-wrap:focus .progress-tooltip,.progress-wrap:focus-within .progress-tooltip,.progress-wrap.touched .progress-tooltip{display:block}
 
 /* Actions */
-.row-actions{display:flex;gap:4px}
+.row-actions{display:flex;gap:4px;align-items:center}
 .row-actions button{background:none;border:none;font-size:.95rem;padding:4px 6px;cursor:pointer;border-radius:6px;transition:background .15s}
 .row-actions button:hover{background:var(--input-bg)}
 
@@ -141,14 +147,14 @@ tr.retired-row{opacity:.55}
 /* Modal */
 .modal-overlay{position:fixed;inset:0;background:var(--overlay);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:100;padding:20px}
 .modal-overlay.active{display:flex}
-.modal{background:var(--modal-bg);border:1px solid var(--card-border);border-radius:14px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;animation:fadeIn .3s ease;padding:28px}
+.modal{background:var(--modal-bg);border:1px solid var(--card-border);border-radius:14px;width:100%;max-width:480px;max-height:90vh;max-height:90dvh;overflow-y:auto;overscroll-behavior:contain;animation:fadeIn .3s ease;padding:28px}
 .modal h2{font-size:1.1rem;margin-bottom:20px}
 .form-group{margin-bottom:14px}
 .form-group label{display:block;font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
 .form-group input,.form-group select,.form-group textarea{width:100%;background:var(--input-bg);border:1px solid var(--card-border);color:var(--text);padding:10px 14px;border-radius:var(--radius);font-size:.88rem}
 .form-group textarea{resize:vertical;min-height:60px}
 .form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--green)}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
 
 /* Settings panel */
@@ -177,14 +183,14 @@ tr.retired-row{opacity:.55}
 .confirm-overlay{position:fixed;inset:0;background:var(--overlay);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:200;padding:20px}
 .confirm-overlay.active{display:flex}
 .confirm-box{background:var(--modal-bg);border:1px solid var(--card-border);border-radius:14px;padding:24px;max-width:380px;width:100%;animation:fadeIn .3s ease;text-align:center}
-.confirm-box p{margin-bottom:20px;font-size:.9rem}
+.confirm-box p{margin-bottom:20px;font-size:.9rem;overflow-wrap:anywhere}
 .confirm-box .confirm-actions{display:flex;gap:8px;justify-content:center}
 
 /* Update toast */
-.update-toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:300;display:flex;align-items:center;gap:12px;background:var(--modal-bg);border:1px solid var(--card-border);border-radius:12px;padding:12px 16px;box-shadow:0 6px 20px rgba(0,0,0,.3);font-size:.85rem;color:var(--text);animation:fadeIn .3s ease}
+.update-toast{position:fixed;left:0;right:0;margin:0 auto;width:max-content;max-width:calc(100vw - 32px);bottom:calc(20px + env(safe-area-inset-bottom));z-index:300;display:flex;align-items:center;gap:12px;background:var(--modal-bg);border:1px solid var(--card-border);border-radius:12px;padding:12px 16px;box-shadow:0 6px 20px rgba(0,0,0,.3);font-size:.85rem;color:var(--text);animation:fadeIn .3s ease}
 
 /* Toast notifications */
-.toast-wrap{position:fixed;right:16px;bottom:16px;z-index:400;display:flex;flex-direction:column;gap:8px;max-width:min(360px,90vw)}
+.toast-wrap{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:400;display:flex;flex-direction:column;gap:8px;max-width:min(360px,90vw)}
 .toast{background:var(--modal-bg);border:1px solid var(--card-border);border-left:3px solid var(--blue);border-radius:8px;padding:10px 14px;font-size:.82rem;color:var(--text);box-shadow:0 4px 14px rgba(0,0,0,.25);animation:fadeIn .2s ease;line-height:1.4}
 .toast-error{border-left-color:var(--red)}
 .toast-success{border-left-color:var(--green)}
@@ -195,7 +201,8 @@ tr.retired-row{opacity:.55}
   .chart-bar-row .bar-label{width:120px}
 }
 @media(max-width:767px){
-  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  input,select,textarea{font-size:16px!important}
   .charts-grid{grid-template-columns:1fr}
   .filters-bar{flex-direction:column;align-items:stretch}
   .filters-bar .spacer{display:none}
@@ -212,6 +219,22 @@ tr.retired-row{opacity:.55}
   table th:first-child,table td:first-child{position:sticky;left:0;z-index:2}
   table th:first-child{background:var(--thead-bg)}
   table td:first-child{background:var(--bg)}
+  table th:first-child{background:linear-gradient(var(--thead-bg),var(--thead-bg)),var(--bg)}
+  .product-name{max-width:140px;overflow-wrap:break-word}
+}
+@media(max-width:480px){
+  .kpi-card{padding:14px}
+  .kpi-card .kpi-value{font-size:1.15rem}
+  .form-row{grid-template-columns:1fr;gap:0}
+  .chart-bar-row .bar-label{width:80px}
+  .chart-bar-row .bar-fill{font-size:0;padding:0}
+}
+@media(pointer:coarse){
+  .row-actions button,.theme-toggle button,.btn-icon,.btn-sm{min-width:44px;min-height:44px}
+  .theme-toggle{height:auto}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
 }
 </style>
 </head>
@@ -369,7 +392,7 @@ function getSystemTheme() {
 }
 function applyTheme(resolved) {
   document.documentElement.setAttribute('data-theme', resolved);
-  document.querySelector('meta[name="theme-color"]').content = resolved === 'light' ? '#f8fafc' : '#10b981';
+  document.querySelector('meta[name="theme-color"]').content = resolved === 'light' ? '#f8fafc' : '#0c0f1a';
 }
 function setTheme(mode) {
   localStorage.setItem('theme', mode);
@@ -474,8 +497,9 @@ function getCPDColor(cpd) {
 }
 function getMilestoneDate(item, threshold) {
   const daysNeeded = Math.ceil(item.price / threshold);
-  const d = new Date(new Date(item.date).getTime() + daysNeeded * 86400000);
-  return d.toISOString().slice(0, 10);
+  const t = new Date(item.date).getTime() + daysNeeded * 86400000;
+  if (!isFinite(t) || Math.abs(t) > 8.64e15) return null;
+  return new Date(t).toISOString().slice(0, 10);
 }
 function getMilestonesTooltip(item) {
   return THRESHOLDS.map(t => {
@@ -487,9 +511,11 @@ function getMilestonesTooltip(item) {
 
 // ---- PERSISTENCE ----
 function touchData() { dataLastModified = new Date().toISOString(); }
+const MAX_PRICE = 1e7;
 function normalizeItems(arr) {
   if (!Array.isArray(arr)) return [];
   const todayMs = Date.parse(today());
+  const seenIds = new Set();
   return arr.map(i => {
     i = i || {};
     const price = Number(i.price);
@@ -497,11 +523,14 @@ function normalizeItems(arr) {
     const rdOk = typeof i.retiredDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(i.retiredDate) && !isNaN(Date.parse(i.retiredDate));
     const rdValid = rdOk && dateOk && Date.parse(i.retiredDate) >= Date.parse(i.date) && Date.parse(i.retiredDate) <= todayMs;
     const retired = !!i.retired;
+    let id = (typeof i.id === 'string' && /^[\w-]{1,64}$/.test(i.id)) ? i.id : uuid();
+    if (seenIds.has(id)) id = uuid();
+    seenIds.add(id);
     return {
-      id: (typeof i.id === 'string' && /^[\w-]{1,64}$/.test(i.id)) ? i.id : uuid(),
+      id,
       product: i.product != null ? String(i.product) : '',
       date: dateOk ? i.date : null,
-      price: (isFinite(price) && price > 0) ? price : null,
+      price: (isFinite(price) && price > 0 && price <= MAX_PRICE) ? price : null,
       category: CATEGORIES.includes(i.category) ? i.category : 'Altro',
       retired,
       retiredDate: retired && rdValid ? i.retiredDate : null,
@@ -511,7 +540,13 @@ function normalizeItems(arr) {
 }
 function save() {
   if (!dataLastModified) dataLastModified = new Date().toISOString();
-  localStorage.setItem('diluizione_data', JSON.stringify({ items, lastModified: dataLastModified }));
+  try {
+    localStorage.setItem('diluizione_data', JSON.stringify({ items, lastModified: dataLastModified }));
+    return true;
+  } catch(e) {
+    notify('Salvataggio non riuscito: spazio di archiviazione esaurito o non disponibile.', 'error');
+    return false;
+  }
 }
 function load() {
   const raw = localStorage.getItem('diluizione_data');
@@ -521,13 +556,31 @@ function load() {
       items = normalizeItems(parsed.items || parsed);
       dataLastModified = parsed.lastModified || new Date().toISOString();
       return true;
-    } catch(e) {}
+    } catch(e) {
+      // Keep the unreadable data instead of silently overwriting it with defaults
+      try { localStorage.setItem('diluizione_data_backup', raw); } catch(_) {}
+      notify('Dati locali illeggibili: copia salvata in "diluizione_data_backup".', 'error');
+    }
   }
   return false;
 }
 function getLastModified() { return dataLastModified; }
 
 // ---- SYNC ----
+// Validate a remote payload: never let a malformed Gist wipe local data
+function parseRemoteItems(parsed) {
+  const arr = Array.isArray(parsed) ? parsed : parsed && parsed.items;
+  if (!Array.isArray(arr)) throw new Error('Dati remoti non validi');
+  const normalized = normalizeItems(arr);
+  if (arr.length && !normalized.length) throw new Error('Nessun record valido nei dati remoti');
+  return normalized;
+}
+// Timestamps from the future (bad clock or tampering) must not win every sync
+function clampTimestamp(iso) {
+  const t = Date.parse(iso);
+  if (isNaN(t)) return null;
+  return new Date(Math.min(t, Date.now() + 86400000)).toISOString();
+}
 function getSyncConfig() {
   const token = localStorage.getItem('sync_token');
   const gistId = localStorage.getItem('sync_gist_id');
@@ -585,7 +638,9 @@ async function configureSync() {
     localStorage.setItem('sync_last', new Date().toISOString());
     document.getElementById('inputToken').value = '';
     updateSyncUI();
-    if (gistId) await pullFromGist();
+    if (gistId && await showConfirm('Gist collegato. Scaricare i dati remoti sostituendo quelli locali? (Annulla = mantieni i dati locali, verranno caricati al prossimo salvataggio)')) {
+      await pullFromGist();
+    }
   } catch(e) {
     setSyncStatus('🔴', 'Errore');
     notify('Errore configurazione: ' + e.message, 'error');
@@ -629,8 +684,8 @@ async function pullFromGist() {
     const file = data.files['diluizione_data.json'];
     if (file) {
       const parsed = JSON.parse(file.content);
-      items = normalizeItems(parsed.items || parsed);
-      dataLastModified = parsed.lastModified || new Date().toISOString();
+      items = parseRemoteItems(parsed);
+      dataLastModified = clampTimestamp(parsed && parsed.lastModified) || new Date().toISOString();
       save();
       render();
     }
@@ -657,13 +712,13 @@ async function doSync() {
     const file = data.files['diluizione_data.json'];
     if (file) {
       const remote = JSON.parse(file.content);
-      const remoteT = Date.parse(remote && remote.lastModified);
+      const remoteT = Date.parse(clampTimestamp(remote && remote.lastModified));
       const localT = Date.parse(dataLastModified);
       const r = isNaN(remoteT) ? -Infinity : remoteT;
       const l = isNaN(localT) ? -Infinity : localT;
       if (r > l) {
-        items = normalizeItems(remote.items || remote);
-        dataLastModified = remote.lastModified || new Date().toISOString();
+        items = parseRemoteItems(remote);
+        dataLastModified = clampTimestamp(remote.lastModified) || new Date().toISOString();
         save();
         render();
       } else if (l > r) {
@@ -676,6 +731,7 @@ async function doSync() {
     updateSyncUI();
   } catch(e) {
     setSyncStatus('🔴', 'Errore sync');
+    if (e.message && e.message.includes('remoti')) notify('Sync annullato: ' + e.message, 'error');
   }
 }
 
@@ -688,9 +744,15 @@ function disconnectSync() {
 
 function afterModification() {
   touchData();
-  save();
+  if (!save()) {
+    // Roll back to the last state that was actually persisted
+    load();
+    render();
+    return false;
+  }
   render();
   schedulePush();
+  return true;
 }
 
 function schedulePush() {
@@ -711,7 +773,7 @@ async function runPush() {
 }
 
 // ---- TOAST ----
-function notify(msg, type = 'info') {
+function notify(msg, type = 'info', duration) {
   let wrap = document.getElementById('toastWrap');
   if (!wrap) { wrap = document.createElement('div'); wrap.id = 'toastWrap'; wrap.className = 'toast-wrap'; document.body.appendChild(wrap); }
   const t = document.createElement('div');
@@ -719,7 +781,7 @@ function notify(msg, type = 'info') {
   t.setAttribute('role', type === 'error' ? 'alert' : 'status');
   t.textContent = msg;
   wrap.appendChild(t);
-  setTimeout(() => { t.classList.add('toast-out'); setTimeout(() => t.remove(), 300); }, type === 'error' ? 5000 : 3000);
+  setTimeout(() => { t.classList.add('toast-out'); setTimeout(() => t.remove(), 300); }, duration || (type === 'error' ? 5000 : 3000));
 }
 
 // ---- FOCUS MANAGEMENT (modal/confirm a11y) ----
@@ -811,6 +873,8 @@ function saveProduct() {
     (!product ? document.getElementById('fProduct') : !date ? document.getElementById('fDate') : document.getElementById('fPrice')).focus();
     return;
   }
+  if (price > MAX_PRICE) { notify('Prezzo troppo alto (max ' + fmtEur(MAX_PRICE) + ')', 'error'); document.getElementById('fPrice').focus(); return; }
+  if (date > today()) { notify('La data di acquisto non può essere nel futuro', 'error'); document.getElementById('fDate').focus(); return; }
   if (editingId) {
     const item = items.find(i => i.id === editingId);
     if (!item) return;
@@ -833,8 +897,7 @@ function saveProduct() {
   } else {
     items.push({ id: uuid(), product, date, price, category, retired: false, retiredDate: null, notes });
   }
-  closeModal();
-  afterModification();
+  if (afterModification()) closeModal();
 }
 
 async function retireProduct(id) {
@@ -877,7 +940,7 @@ function handleImport(event) {
   const file = event.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = function(e) {
+  reader.onload = async function(e) {
     try {
       const parsed = JSON.parse(e.target.result);
       const arr = parsed.items || parsed;
@@ -885,8 +948,10 @@ function handleImport(event) {
       const normalized = normalizeItems(arr);
       if (!normalized.length) throw new Error('Nessun record valido nel file');
       const dropped = arr.length - normalized.length;
+      const ok = await showConfirm('Sostituire i ' + items.length + ' prodotti attuali con i ' + normalized.length + ' del file? (Consiglio: esporta prima un backup)');
+      if (!ok) return;
       items = normalized;
-      afterModification();
+      if (!afterModification()) return;
       notify('Import completato: ' + normalized.length + ' prodotti importati' + (dropped > 0 ? ', ' + dropped + ' record non validi scartati' : '') + '.', 'success');
     } catch(err) {
       notify('Errore importazione: ' + err.message, 'error');
@@ -947,10 +1012,11 @@ function renderKPIs() {
   const notAmortized = active.filter(i => getCPD(i) > 0.25);
   let nextMilestone = null;
   if (notAmortized.length) {
-    notAmortized.sort((a,b) => new Date(getMilestoneDate(a, 0.25)) - new Date(getMilestoneDate(b, 0.25)));
+    const msTime = i => Date.parse(getMilestoneDate(i, 0.25)) || Infinity;
+    notAmortized.sort((a,b) => msTime(a) - msTime(b));
     const closest = notAmortized[0];
     const mDate = getMilestoneDate(closest, 0.25);
-    const daysLeft = Math.max(0, Math.round((new Date(mDate) - new Date(today())) / 86400000));
+    const daysLeft = mDate ? Math.max(0, Math.round((new Date(mDate) - new Date(today())) / 86400000)).toLocaleString('it-IT') : '?';
     nextMilestone = { product: closest.product, date: fmtDate(mDate), daysLeft };
   }
 
@@ -966,7 +1032,7 @@ function renderKPIs() {
       <div class="kpi-sub">media ponderata (spesa/giorni)</div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-label">Ammortizzati &le;0.25€/g</div>
+      <div class="kpi-label">Ammortizzati &le;0,25€/g</div>
       <div class="kpi-value" style="color:var(--green)">${amortized.length}/${active.length}</div>
       <div class="kpi-sub">${fmt(amortPct,1)}% del totale attivi</div>
     </div>
@@ -996,7 +1062,7 @@ function renderCharts() {
     const color = getCPDColor(cpd);
     rankHTML += `<div class="chart-bar-row">
       <span class="bar-label">${escapeHtml(item.product)}</span>
-      <span class="bar-track"><span class="bar-fill" style="width:${pct}%;background:${color}">${fmt(cpd,2)}</span></span>
+      <span class="bar-track"><span class="bar-fill" style="width:${pct}%;background:${color}">${pct >= 15 ? fmt(cpd,2) : ''}</span></span>
       <span class="bar-value">${fmt(cpd,2)} €/g</span>
     </div>`;
   });
@@ -1014,7 +1080,7 @@ function renderCharts() {
     const color = CAT_COLORS[cat] || CAT_COLORS.Altro;
     catHTML += `<div class="chart-bar-row">
       <span class="bar-label">${escapeHtml(cat)}</span>
-      <span class="bar-track"><span class="bar-fill" style="width:${pct}%;background:${color}">${fmt(pct,1)}%</span></span>
+      <span class="bar-track"><span class="bar-fill" style="width:${pct}%;background:${color}">${pct >= 15 ? fmt(pct,1) + '%' : ''}</span></span>
       <span class="bar-value">${fmtEur(total)}</span>
     </div>`;
   });
@@ -1058,7 +1124,7 @@ function renderTable() {
   let html = `<table>
     <thead><tr>
       <th>Prodotto</th><th>Categoria</th><th>Acquisto</th><th>Prezzo</th>
-      <th>Giorni</th><th>€/giorno</th><th>Soglie</th><th>Progresso → 0.25€/g</th><th>Azioni</th>
+      <th>Giorni</th><th>€/giorno</th><th>Soglie</th><th>Progresso → 0,25€/g</th><th>Azioni</th>
     </tr></thead><tbody>`;
 
   list.forEach(item => {
@@ -1068,7 +1134,7 @@ function renderTable() {
     const catColor = CAT_COLORS[item.category] || CAT_COLORS.Altro;
     const thresholds = THRESHOLDS.map(t => {
       const ok = getThresholdReached(item, t);
-      return `<span class="threshold-badge ${ok?'threshold-ok':'threshold-no'}" title="${t}€/g">${ok?'✓':'✗'}${fmt(t,2)}</span>`;
+      return `<span class="threshold-badge ${ok?'threshold-ok':'threshold-no'}" title="${fmt(t,2)}€/g">${ok?'✓':'✗'}${fmt(t,2)}</span>`;
     }).join(' ');
 
     const progressColor = getCPDColor(cpd);
@@ -1076,7 +1142,7 @@ function renderTable() {
 
     html += `<tr>
       <td class="product-name">${escapeHtml(item.product)}</td>
-      <td><span class="badge-cat" style="background:${catColor}22;color:${catColor}">${escapeHtml(item.category)}</span></td>
+      <td><span class="badge-cat" style="background:${catColor}22;color:color-mix(in srgb,${catColor} 65%,var(--text))">${escapeHtml(item.category)}</span></td>
       <td class="mono">${fmtDate(item.date)}</td>
       <td class="mono">${fmtEur(item.price)}</td>
       <td class="mono">${days.toLocaleString('it-IT')}</td>
@@ -1086,14 +1152,14 @@ function renderTable() {
         <span class="progress-wrap" tabindex="0" role="img" aria-label="Traguardi: ${escapeHtml(tooltip.replace(/\n/g, '; '))}" ontouchstart="this.classList.toggle('touched')" ontouchend="setTimeout(()=>this.classList.remove('touched'),2000)">
           <span class="progress-track"><span class="progress-fill" style="width:${progress}%;background:${progressColor}"></span></span>
           <span class="progress-text">${fmt(progress,1)}%</span>
-          <span class="progress-tooltip">${tooltip}</span>
+          <span class="progress-tooltip">${escapeHtml(tooltip)}</span>
         </span>
       </td>
-      <td class="row-actions">
+      <td><div class="row-actions">
         <button type="button" title="Modifica" aria-label="Modifica ${escapeHtml(item.product)}" data-action="edit" data-id="${escapeHtml(item.id)}">✏️</button>
         <button type="button" title="Ritira" aria-label="Ritira ${escapeHtml(item.product)}" data-action="retire" data-id="${escapeHtml(item.id)}">⏸</button>
         <button type="button" title="Elimina" aria-label="Elimina ${escapeHtml(item.product)}" data-action="delete" data-id="${escapeHtml(item.id)}">🗑️</button>
-      </td>
+      </div></td>
     </tr>`;
   });
 
@@ -1146,11 +1212,30 @@ function renderRetiredSection() {
 }
 
 function render() {
-  renderKPIs();
-  renderCharts();
-  renderFilters();
-  renderTable();
-  renderRetiredSection();
+  // Each section renders independently: one bad record must not blank the whole app
+  let failed = false;
+  for (const fn of [renderKPIs, renderCharts, renderFilters, renderTable, renderRetiredSection]) {
+    try { fn(); } catch(e) { failed = true; console.error(e); }
+  }
+  if (failed) notify('Errore di visualizzazione: alcuni dati potrebbero non essere mostrati.', 'error');
+}
+
+// ---- EASTER EGG: 7 tap veloci sul logo ----
+let logoTaps = 0, logoTapTimer = null;
+function handleLogoTap() {
+  clearTimeout(logoTapTimer);
+  logoTapTimer = setTimeout(() => { logoTaps = 0; }, 600);
+  if (++logoTaps < 7) return;
+  logoTaps = 0;
+  const logo = document.querySelector('header h1 .logo');
+  logo.classList.remove('spin');
+  void logo.offsetWidth; // restart the animation
+  logo.classList.add('spin');
+  const total = items.reduce((s,i) => s + i.price, 0);
+  const coffees = Math.floor(total / 1.2);
+  const best = [...items].sort((a,b) => getCPD(a) - getCPD(b))[0];
+  notify('☕ Con i tuoi acquisti tech avresti comprato ' + coffees.toLocaleString('it-IT') + ' caffè al bar.' +
+    (best ? ' 🏆 Campione di ammortamento: "' + best.product + '" a ' + fmt(getCPD(best),2) + ' €/g.' : ''), 'success', 7000);
 }
 
 // ---- ROW ACTIONS (event delegation) ----
@@ -1188,6 +1273,7 @@ function showUpdateToast(reg) {
 async function init() {
   document.addEventListener('click', handleRowAction);
   document.addEventListener('keydown', handleGlobalKeydown);
+  document.querySelector('header h1 .logo').addEventListener('click', handleLogoTap);
   const loaded = load();
   if (!loaded) {
     // No local data; use defaults if no sync configured
@@ -1209,6 +1295,7 @@ async function init() {
     if (e.key !== 'diluizione_data' || !e.newValue) return;
     try {
       const parsed = JSON.parse(e.newValue);
+      if (document.getElementById('modalOverlay').classList.contains('active')) closeModal();
       items = normalizeItems(parsed.items || parsed);
       dataLastModified = parsed.lastModified || dataLastModified;
       render();
