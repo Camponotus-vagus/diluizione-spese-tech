@@ -54,7 +54,9 @@ L'app creerà automaticamente un Gist privato se non ne fornisci uno.
 
 ```
 diluizione-spese-tech/
-├── index.html          # App completa (HTML + CSS + JS inline)
+├── index.html          # Markup e Content Security Policy
+├── app.js              # Logica dell'app
+├── app.css             # Stili
 ├── manifest.json       # PWA manifest
 ├── sw.js               # Service worker per offline
 ├── scripts/check.mjs   # Controlli statici (sintassi, manifest, asset)
@@ -74,6 +76,8 @@ npm run lint                         # controlli statici
 npx playwright install chromium      # solo la prima volta
 npm test                             # smoke test nel browser
 ```
+
+La Content Security Policy non ammette `'unsafe-inline'`: niente `<script>`/`<style>` inline, niente handler `on*=` e niente attributi `style=`. Usa `data-action`/`data-change` per gli eventi e `data-css`, `hidden` o classi CSS per gli stili; `npm run lint` lo verifica.
 
 La CI (GitHub Actions) esegue gli stessi controlli su ogni pull request e su `main`. Il deploy avviene automaticamente tramite GitHub Pages a ogni push su `main`.
 

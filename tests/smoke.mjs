@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.png': 'image/png' };
+const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png' };
 const server = http.createServer((req, res) => {
   const file = path.join(ROOT, decodeURIComponent(new URL(req.url, 'http://x').pathname));
   if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); return res.end(); }
@@ -24,11 +24,18 @@ const newCtx = opts => browser.newContext({ serviceWorkers: 'block', ...opts }).
   await c.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
   return c;
 });
+// Page errors plus Content Security Policy violations reported by the browser
+const watchErrors = p => {
+  const errs = [];
+  p.on('pageerror', e => errs.push(e.message));
+  p.on('console', m => { if (m.type() === 'error' && /Content Security Policy/i.test(m.text())) errs.push(m.text()); });
+  return errs;
+};
 
 try {
   for (const [w, h] of [[320, 640], [360, 740], [1280, 900]]) for (const colorScheme of ['light', 'dark']) {
     const ctx = await newCtx({ viewport: { width: w, height: h }, colorScheme });
-    const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
+    const p = await ctx.newPage(); const errs = watchErrors(p);
     await p.goto(URL_); await p.waitForSelector('#tableWrap table');
     const [sw, iw] = await p.evaluate(() => [document.documentElement.scrollWidth, innerWidth]);
     check(`no horizontal scroll ${w}px ${colorScheme}`, sw <= iw, `${sw}>${iw}`);
@@ -37,7 +44,7 @@ try {
   }
 
   const ctx = await newCtx({ viewport: { width: 360, height: 740 } });
-  const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
+  const p = await ctx.newPage(); const errs = watchErrors(p);
   await p.goto(URL_);
 
   check('milestone guard on huge price', await p.evaluate(() => getMilestoneDate({ price: 3e7, date: '2024-01-01' }, 0.25) === null));
@@ -66,6 +73,32 @@ try {
     Storage.prototype.setItem = orig;
     return ok === false && items.length === n;
   }));
+
+  // UI wiring: every control now goes through delegated listeners instead of inline handlers
+  await p.evaluate(() => localStorage.clear());
+  await p.reload(); await p.waitForSelector('#tableWrap table');
+  await p.click('[data-action="setTheme"][data-arg="light"]');
+  check('theme button works', await p.getAttribute('html', 'data-theme') === 'light');
+  await p.click('[data-action="toggleSettings"]');
+  check('settings toggle works', await p.isVisible('#settingsPanel'));
+  await p.click('[data-action="toggleSettings"]');
+  check('settings toggle hides again', !(await p.isVisible('#settingsPanel')));
+  await p.click('header [data-action="openModal"]');
+  check('add button opens modal', await p.isVisible('#modalOverlay.active') && !(await p.isVisible('#editFields')));
+  await p.fill('#fProduct', 'Test CSP'); await p.fill('#fPrice', '42');
+  await p.click('[data-action="saveProduct"]');
+  check('save adds product', !(await p.isVisible('#modalOverlay.active')) && (await p.textContent('#tableWrap')).includes('Test CSP'));
+  await p.click('tbody tr:has-text("Test CSP") [data-action="edit"]');
+  check('edit opens modal with edit fields', await p.isVisible('#editFields'));
+  await p.mouse.click(5, 5);
+  check('click on overlay closes modal', !(await p.isVisible('#modalOverlay.active')));
+  await p.click('tbody tr:has-text("Test CSP") [data-action="delete"]');
+  await p.click('[data-action="closeConfirm"][data-arg="true"]');
+  check('delete via confirm dialog', !(await p.textContent('#tableWrap')).includes('Test CSP'));
+  await p.selectOption('[data-change="filterCategory"]', 'Drone');
+  check('category filter works', await p.$$eval('#tableWrap tbody tr', r => r.length) === 1);
+  await p.selectOption('[data-change="filterCategory"]', 'all');
+  check('dynamic styles applied via CSSOM', await p.$eval('.progress-fill', el => el.style.width !== '' && !el.hasAttribute('data-css')));
 
   for (let i = 0; i < 7; i++) await p.click('header h1 .logo');
   check('easter egg after 7 logo taps', (await p.textContent('#toastWrap').catch(() => '') || '').includes('caffè'));

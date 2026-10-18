@@ -1,8 +1,10 @@
 const CACHE_PREFIX = 'spese-tech-';
-const CACHE_NAME = CACHE_PREFIX + 'v5';
+const CACHE_NAME = CACHE_PREFIX + 'v6';
 const STATIC_ASSETS = [
   './',
   './index.html',
+  './app.js',
+  './app.css',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png'
@@ -42,8 +44,11 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Network-first for navigations / HTML (always get the latest version)
-  if (req.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname.endsWith('/')) {
+  // Network-first for navigations and the app shell (HTML/JS/CSS), so the page
+  // and its script are always the same version; the cache is the offline fallback
+  const isNavigate = req.mode === 'navigate';
+  const isAppShell = url.origin === self.location.origin && /(\/|\.html|\.js|\.css)$/.test(url.pathname);
+  if (isNavigate || isAppShell) {
     event.respondWith(
       fetch(req).then(response => {
         // Store under a query-less key so ?x=N links don't grow the cache unbounded
@@ -52,7 +57,7 @@ self.addEventListener('fetch', event => {
           caches.open(CACHE_NAME).then(cache => cache.put(url.origin + url.pathname, clone));
         }
         return response;
-      }).catch(() => caches.match(req, { ignoreSearch: true }).then(c => c || caches.match('./index.html')))
+      }).catch(() => caches.match(req, { ignoreSearch: true }).then(c => c || (isNavigate ? caches.match('./index.html') : c)))
     );
     return;
   }
