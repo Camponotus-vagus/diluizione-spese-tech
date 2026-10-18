@@ -1,0 +1,12 @@
+{
+  "name": "diluizione-spese-tech",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "node scripts/check.mjs",
+    "test": "node tests/smoke.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1"
+  }
+}
