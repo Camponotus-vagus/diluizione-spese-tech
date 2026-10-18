@@ -57,11 +57,25 @@ diluizione-spese-tech/
 ├── index.html          # App completa (HTML + CSS + JS inline)
 ├── manifest.json       # PWA manifest
 ├── sw.js               # Service worker per offline
+├── scripts/check.mjs   # Controlli statici (sintassi, manifest, asset)
+├── tests/smoke.mjs     # Smoke test Playwright
+├── .github/workflows/  # CI su ogni PR e push su main
 ├── icons/
 │   ├── icon-192.png    # Icona 192x192
 │   └── icon-512.png    # Icona 512x512
 └── README.md
 ```
+
+## Sviluppo e CI
+
+```bash
+npm ci
+npm run lint                         # controlli statici
+npx playwright install chromium      # solo la prima volta
+npm test                             # smoke test nel browser
+```
+
+La CI (GitHub Actions) esegue gli stessi controlli su ogni pull request e su `main`. Il deploy avviene automaticamente tramite GitHub Pages a ogni push su `main`.
 
 ## Privacy
 
