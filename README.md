@@ -55,6 +55,7 @@ L'app creerà automaticamente un Gist privato se non ne fornisci uno.
 ```
 diluizione-spese-tech/
 ├── index.html          # Markup e Content Security Policy
+├── theme.js            # Applica il tema prima del primo paint
 ├── app.js              # Logica dell'app
 ├── app.css             # Stili
 ├── manifest.json       # PWA manifest

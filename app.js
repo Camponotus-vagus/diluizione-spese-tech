@@ -884,13 +884,21 @@ const CHANGE_ACTIONS = {
   filterCategory: el => { filterCategory = el.value; localStorage.setItem('filterCategory', el.value); render(); },
   sortBy: el => { sortBy = el.value; localStorage.setItem('sortBy', el.value); render(); },
 };
+// Own-property lookup only: an attribute value like "constructor" must not hit
+// Object.prototype, and a misspelled action is reported instead of ignored
+function lookupAction(table, kind, name) {
+  if (Object.hasOwn(table, name)) return table[name];
+  console.warn('Unknown ' + kind + ': ' + name);
+  return null;
+}
 function handleClickAction(e) {
   const el = e.target.closest('[data-action]');
-  const fn = el && CLICK_ACTIONS[el.dataset.action];
+  const fn = el && lookupAction(CLICK_ACTIONS, 'data-action', el.dataset.action);
   if (fn) fn(el, e);
 }
 function handleChangeAction(e) {
-  const fn = CHANGE_ACTIONS[e.target.dataset && e.target.dataset.change];
+  const name = e.target.dataset && e.target.dataset.change;
+  const fn = name !== undefined && lookupAction(CHANGE_ACTIONS, 'data-change', name);
   if (fn) fn(e.target, e);
 }
 // Touch devices have no hover: a tap shows the milestone tooltip for 2s

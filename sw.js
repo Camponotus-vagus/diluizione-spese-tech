@@ -1,8 +1,9 @@
 const CACHE_PREFIX = 'spese-tech-';
-const CACHE_NAME = CACHE_PREFIX + 'v6';
+const CACHE_NAME = CACHE_PREFIX + 'v7';
 const STATIC_ASSETS = [
   './',
   './index.html',
+  './theme.js',
   './app.js',
   './app.css',
   './manifest.json',
@@ -13,7 +14,9 @@ const FONT_ORIGINS = ['https://fonts.googleapis.com', 'https://fonts.gstatic.com
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS))
+    // cache: 'reload' bypasses the HTTP cache so the precache holds the deployed
+    // files, not whatever the browser cached up to max-age ago
+    caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS.map(a => new Request(a, { cache: 'reload' }))))
   );
   // No skipWaiting(): the new worker waits until the page asks to update,
   // so we can prompt the user instead of swapping versions silently.
@@ -44,20 +47,26 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Network-first for navigations and the app shell (HTML/JS/CSS), so the page
-  // and its script are always the same version; the cache is the offline fallback
+  // Network-first for navigations and the app shell (HTML/JS/CSS). The page and
+  // its scripts/styles are separate files, so each one is revalidated with the
+  // server (cache: 'no-cache' skips the HTTP cache, which GitHub Pages fills for
+  // max-age=600) and they all come from the same deploy; the service worker
+  // cache is only the offline fallback
   const isNavigate = req.mode === 'navigate';
   const isAppShell = url.origin === self.location.origin && /(\/|\.html|\.js|\.css)$/.test(url.pathname);
   if (isNavigate || isAppShell) {
     event.respondWith(
-      fetch(req).then(response => {
+      fetch(req, { cache: 'no-cache' }).then(response => {
         // Store under a query-less key so ?x=N links don't grow the cache unbounded
         if (response.ok && url.origin === self.location.origin) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(url.origin + url.pathname, clone));
         }
         return response;
-      }).catch(() => caches.match(req, { ignoreSearch: true }).then(c => c || (isNavigate ? caches.match('./index.html') : c)))
+      }).catch(() => caches.match(req, { ignoreSearch: true }).then(c =>
+        // Offline and not cached: a navigation falls back to the app page, an
+        // asset gets a proper network error (not an undefined Response)
+        c || (isNavigate ? caches.match('./index.html') : Response.error())))
     );
     return;
   }
