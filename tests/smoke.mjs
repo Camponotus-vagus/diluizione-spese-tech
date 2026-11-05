@@ -8,7 +8,9 @@ import path from 'node:path';
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png' };
 const server = http.createServer((req, res) => {
-  const file = path.join(ROOT, decodeURIComponent(new URL(req.url, 'http://x').pathname));
+  let file = path.join(ROOT, decodeURIComponent(new URL(req.url, 'http://x').pathname));
+  // Like GitHub Pages, a directory serves its index.html (the worker precaches './')
+  if (fs.existsSync(file) && fs.statSync(file).isDirectory()) file = path.join(file, 'index.html');
   if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); return res.end(); }
   res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream' });
   fs.createReadStream(file).pipe(res);
@@ -103,6 +105,27 @@ try {
   for (let i = 0; i < 7; i++) await p.click('header h1 .logo');
   check('easter egg after 7 logo taps', (await p.textContent('#toastWrap').catch(() => '') || '').includes('caffè'));
   check('no JS errors in robustness run', !errs.length, errs.join(' | '));
+
+  // Service worker: precaches the app shell, takes control on the next load and
+  // serves page, scripts and styles from its cache when the network is gone
+  const sctx = await newCtx({ serviceWorkers: 'allow', viewport: { width: 360, height: 740 } });
+  const sp = await sctx.newPage(); const serrs = watchErrors(sp);
+  await sp.goto(URL_); await sp.waitForSelector('#tableWrap table');
+  await sp.evaluate(() => navigator.serviceWorker.ready);
+  await sp.waitForFunction(async () => {
+    const keys = await caches.keys();
+    if (!keys.length) return false;
+    for (const a of ['./index.html', './theme.js', './app.js', './app.css']) if (!(await caches.match(a))) return false;
+    return true;
+  });
+  await sp.reload(); await sp.waitForSelector('#tableWrap table');
+  check('service worker controls the page', await sp.evaluate(() => !!navigator.serviceWorker.controller));
+  await sctx.setOffline(true);
+  await sp.reload(); await sp.waitForSelector('#tableWrap table');
+  check('app shell served offline from cache', await sp.evaluate(() =>
+    document.documentElement.hasAttribute('data-theme') &&
+    [...document.styleSheets].some(s => s.href && s.href.endsWith('/app.css') && s.cssRules.length > 0)));
+  check('no JS errors in service worker run', !serrs.length, serrs.join(' | '));
 } finally {
   await browser.close();
   server.close();
