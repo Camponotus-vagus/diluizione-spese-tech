@@ -37,7 +37,7 @@ const THRESHOLDS = [1, 0.50, 0.25];
 const DEFAULT_DATA = [
   {"product":"Airpods 3 gen.","date":"2021-12-21","price":179.99,"category":"Audio"},
   {"product":"Chuwi LapBook Air 14\"","date":"2018-06-23","price":333.35,"category":"Laptop"},
-  {"product":"Apple Watch Series 6","date":"2021-10-21","price":389.00,"category":"Wearable"},
+  {"product":"Apple Watch Series 6","date":"2021-10-21","price":389.00,"category":"Wearable","retired":true,"retiredDate":"2026-11-06","notes":"Sostituito da Apple Watch Series 12"},
   {"product":"iPad mini 5","date":"2019-09-12","price":412.82,"category":"Tablet"},
   {"product":"Intel NUC + comp.","date":"2021-01-15","price":670.57,"category":"Desktop"},
   {"product":"iPad Air 4","date":"2022-02-05","price":687.64,"category":"Tablet"},
@@ -46,7 +46,9 @@ const DEFAULT_DATA = [
   {"product":"HP Omen 880-190nl","date":"2019-05-28","price":1999.99,"category":"Desktop"},
   {"product":"MacBook Pro 16\"","date":"2019-12-31","price":3510.18,"category":"Laptop"},
   {"product":"Mac Mini M1","date":"2022-12-01","price":1279.00,"category":"Desktop"},
-  {"product":"Lomi Composter","date":"2024-04-22","price":399.00,"category":"Altro"}
+  {"product":"Lomi Composter","date":"2024-04-22","price":399.00,"category":"Altro"},
+  {"product":"Apple Watch Series 12","date":"2026-11-06","price":389.00,"category":"Wearable"},
+  {"product":"Tiiny AI Pocket","date":"2026-11-06","price":1523.91,"category":"Altro","notes":"1.706,78 $ (1.300 $ + spedizione), cambio stimato ~1,12"}
 ];
 
 // ---- STATE ----
