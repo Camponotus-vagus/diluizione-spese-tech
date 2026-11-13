@@ -57,7 +57,7 @@ let filterCategory = localStorage.getItem('filterCategory') || 'all';
 let sortBy = localStorage.getItem('sortBy') || 'cpd_asc';
 let confirmResolve = null;
 let dataLastModified = null;
-let pushTimer = null, pushInFlight = false, pushQueued = false;
+let pushTimer = null, pushInFlight = false, pushQueued = false, pushPending = false;
 
 // ---- UTILS ----
 function uuid() {
@@ -133,8 +133,16 @@ function normalizeItems(arr) {
     const price = Number(i.price);
     const dateOk = typeof i.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(i.date) && !isNaN(Date.parse(i.date));
     const rdOk = typeof i.retiredDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(i.retiredDate) && !isNaN(Date.parse(i.retiredDate));
-    const rdValid = rdOk && dateOk && Date.parse(i.retiredDate) >= Date.parse(i.date) && Date.parse(i.retiredDate) <= todayMs;
     const retired = !!i.retired;
+    // A retired item must keep a retiredDate, or its cost/day starts ageing again
+    // with today(). Allow one day ahead (retired in a timezone east of this one),
+    // clamp anything else into [date, today] instead of dropping it.
+    let retiredDate = null;
+    if (retired && dateOk) {
+      retiredDate = rdOk ? i.retiredDate : today();
+      if (Date.parse(retiredDate) > todayMs + 86400000) retiredDate = today();
+      if (retiredDate < i.date) retiredDate = i.date;
+    }
     let id = (typeof i.id === 'string' && /^[\w-]{1,64}$/.test(i.id)) ? i.id : uuid();
     if (seenIds.has(id)) id = uuid();
     seenIds.add(id);
@@ -145,7 +153,7 @@ function normalizeItems(arr) {
       price: (isFinite(price) && price > 0 && price <= MAX_PRICE) ? price : null,
       category: CATEGORIES.includes(i.category) ? i.category : 'Altro',
       retired,
-      retiredDate: retired && rdValid ? i.retiredDate : null,
+      retiredDate,
       notes: i.notes != null ? String(i.notes) : ''
     };
   }).filter(i => i.date && i.price != null);
@@ -165,7 +173,9 @@ function load() {
   if (raw) {
     try {
       const parsed = JSON.parse(raw);
-      items = normalizeItems(parsed.items || parsed);
+      const arr = parsed.items || parsed;
+      items = normalizeItems(arr);
+      backupIfDropped(raw, arr, items, 'locali');
       dataLastModified = parsed.lastModified || new Date().toISOString();
       return true;
     } catch(e) {
@@ -177,6 +187,16 @@ function load() {
   return false;
 }
 function getLastModified() { return dataLastModified; }
+// Invalid records are filtered out by normalizeItems and would vanish for good
+// at the next save/push: keep the original payload and tell the user
+function backupIfDropped(raw, arr, kept, source) {
+  const dropped = Array.isArray(arr) ? arr.length - kept.length : 0;
+  if (dropped <= 0) return;
+  try { localStorage.setItem('diluizione_data_backup', typeof raw === 'string' ? raw : JSON.stringify(raw)); } catch(_) {}
+  notify(dropped + (dropped === 1 ? ' record non valido scartato' : ' record non validi scartati') + ' dai dati ' + source + ': originale salvato in "diluizione_data_backup".', 'error', 8000);
+}
+// Demo data starts at the epoch so it never beats real data in a sync
+const SEED_TIMESTAMP = new Date(0).toISOString();
 
 // ---- SYNC ----
 // Validate a remote payload: never let a malformed Gist wipe local data
@@ -185,7 +205,25 @@ function parseRemoteItems(parsed) {
   if (!Array.isArray(arr)) throw new Error('Dati remoti non validi');
   const normalized = normalizeItems(arr);
   if (arr.length && !normalized.length) throw new Error('Nessun record valido nei dati remoti');
+  backupIfDropped(parsed, arr, normalized, 'remoti');
   return normalized;
+}
+// All GitHub calls go through here: a timeout (a captive portal must not hang
+// the sync forever) and a clear message for an expired/revoked token
+async function ghFetch(url, cfg, opts = {}) {
+  const headers = { 'Authorization': 'token ' + cfg.token, 'Accept': 'application/vnd.github+json' };
+  if (opts.body) headers['Content-Type'] = 'application/json';
+  const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined;
+  const res = await fetch(url, { ...opts, headers, signal });
+  if (res.status === 401 || res.status === 403) {
+    const err = new Error('Token GitHub non valido o scaduto: riconfigura la sincronizzazione');
+    err.auth = true;
+    throw err;
+  }
+  return res;
+}
+function reportSyncError(e) {
+  if (e && (e.auth || (e.message && e.message.includes('remoti')))) notify('Sync non riuscito: ' + e.message, 'error', 8000);
 }
 // Timestamps from the future (bad clock or tampering) must not win every sync
 function clampTimestamp(iso) {
@@ -228,16 +266,14 @@ async function configureSync() {
   if (!token) { notify('Inserisci il token PAT', 'error'); return; }
   if (gistId && !/^[a-f0-9]+$/i.test(gistId)) { notify('Gist ID non valido (sono ammessi solo caratteri esadecimali)', 'error'); return; }
   setSyncStatus('🔄', 'Configurazione…');
+  const cfg = { token, gistId };
   try {
     if (gistId) {
-      const res = await fetch('https://api.github.com/gists/' + gistId, {
-        headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github+json' }
-      });
+      const res = await ghFetch('https://api.github.com/gists/' + gistId, cfg);
       if (!res.ok) throw new Error('Gist non trovato o token non valido');
     } else {
-      const res = await fetch('https://api.github.com/gists', {
+      const res = await ghFetch('https://api.github.com/gists', cfg, {
         method: 'POST',
-        headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
         body: JSON.stringify({ description: 'Diluizione Spese Tech - Data', public: false, files: { 'diluizione_data.json': { content: JSON.stringify({ items: items, lastModified: dataLastModified }) } } })
       });
       if (!res.ok) throw new Error('Impossibile creare il Gist');
@@ -250,8 +286,17 @@ async function configureSync() {
     localStorage.setItem('sync_last', new Date().toISOString());
     document.getElementById('inputToken').value = '';
     updateSyncUI();
-    if (gistId && await showConfirm('Gist collegato. Scaricare i dati remoti sostituendo quelli locali? (Annulla = mantieni i dati locali, verranno caricati al prossimo salvataggio)')) {
+    if (!gistId) return;
+    if (dataLastModified === SEED_TIMESTAMP) {
+      // Only demo data here: the Gist always wins, never ask to overwrite it
       await pullFromGist();
+    } else if (await showConfirm('Gist collegato. Scaricare i dati remoti sostituendo quelli locali? (Annulla = mantieni i dati locali e caricali sul Gist)')) {
+      await pullFromGist();
+    } else {
+      // Honour the choice now instead of leaving it to timestamps at the next sync
+      touchData();
+      save();
+      await pushToGist();
     }
   } catch(e) {
     setSyncStatus('🔴', 'Errore');
@@ -264,17 +309,19 @@ async function pushToGist() {
   if (!cfg) return;
   setSyncStatus('🔄', 'Push…');
   try {
-    const res = await fetch('https://api.github.com/gists/' + cfg.gistId, {
+    const res = await ghFetch('https://api.github.com/gists/' + cfg.gistId, cfg, {
       method: 'PATCH',
-      headers: { 'Authorization': 'token ' + cfg.token, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
       body: JSON.stringify({ files: { 'diluizione_data.json': { content: JSON.stringify({ items, lastModified: dataLastModified }) } } })
     });
     if (!res.ok) throw new Error('Push fallito');
+    pushPending = false;
     localStorage.setItem('sync_last', new Date().toISOString());
     setSyncStatus('🟢', 'Sync');
     updateSyncUI();
   } catch(e) {
     setSyncStatus('🔴', 'Errore push');
+    pushPending = true; // retried when the browser comes back online
+    reportSyncError(e);
   }
 }
 
@@ -288,9 +335,7 @@ async function pullFromGist() {
   if (!cfg) return;
   setSyncStatus('🔄', 'Pull…');
   try {
-    const res = await fetch('https://api.github.com/gists/' + cfg.gistId, {
-      headers: { 'Authorization': 'token ' + cfg.token, 'Accept': 'application/vnd.github+json' }
-    });
+    const res = await ghFetch('https://api.github.com/gists/' + cfg.gistId, cfg);
     if (!res.ok) throw new Error('Pull fallito');
     const data = await res.json();
     const file = data.files['diluizione_data.json'];
@@ -306,7 +351,7 @@ async function pullFromGist() {
     updateSyncUI();
   } catch(e) {
     setSyncStatus('🔴', 'Errore pull');
-    notify('Pull dal Gist non riuscito', 'error');
+    notify('Pull dal Gist non riuscito' + (e.auth ? ': ' + e.message : ''), 'error');
   }
 }
 
@@ -316,13 +361,14 @@ async function doSync() {
   setSyncStatus('🔄', 'Sync…');
   try {
     // Pull first to check remote lastModified
-    const res = await fetch('https://api.github.com/gists/' + cfg.gistId, {
-      headers: { 'Authorization': 'token ' + cfg.token, 'Accept': 'application/vnd.github+json' }
-    });
+    const res = await ghFetch('https://api.github.com/gists/' + cfg.gistId, cfg);
     if (!res.ok) throw new Error('Sync fallito');
     const data = await res.json();
     const file = data.files['diluizione_data.json'];
-    if (file) {
+    if (!file) {
+      // Gist without our file (new or emptied by hand): upload the local data
+      if (dataLastModified !== SEED_TIMESTAMP) { await pushToGist(); return; }
+    } else {
       const remote = JSON.parse(file.content);
       const remoteT = Date.parse(clampTimestamp(remote && remote.lastModified));
       const localT = Date.parse(dataLastModified);
@@ -343,7 +389,7 @@ async function doSync() {
     updateSyncUI();
   } catch(e) {
     setSyncStatus('🔴', 'Errore sync');
-    if (e.message && e.message.includes('remoti')) notify('Sync annullato: ' + e.message, 'error');
+    reportSyncError(e);
   }
 }
 
@@ -374,6 +420,7 @@ function schedulePush() {
   pushTimer = setTimeout(runPush, 2000);
 }
 async function runPush() {
+  pushTimer = null;
   if (pushInFlight) { pushQueued = true; return; }
   pushInFlight = true;
   try {
@@ -425,6 +472,9 @@ function handleGlobalKeydown(e) {
 // ---- CONFIRM ----
 function showConfirm(msg) {
   return new Promise(resolve => {
+    // A second dialog (e.g. a sync prompt during a delete) cancels the first
+    // instead of leaving its promise pending forever
+    if (confirmResolve) confirmResolve(false);
     confirmResolve = resolve;
     lastFocused = document.activeElement;
     document.getElementById('confirmMsg').textContent = msg;
@@ -490,22 +540,16 @@ function saveProduct() {
   if (editingId) {
     const item = items.find(i => i.id === editingId);
     if (!item) return;
-    item.product = product;
-    item.category = category;
-    item.date = date;
-    item.price = price;
-    item.notes = notes;
-    const status = document.getElementById('fStatus').value;
-    if (status === 'retired') {
-      const rd = document.getElementById('fRetiredDate').value || today();
-      if (rd < date) { notify('La data di ritiro non può precedere la data di acquisto', 'error'); document.getElementById('fRetiredDate').focus(); return; }
-      if (rd > today()) { notify('La data di ritiro non può essere nel futuro', 'error'); document.getElementById('fRetiredDate').focus(); return; }
-      item.retired = true;
-      item.retiredDate = rd;
-    } else {
-      item.retired = false;
-      item.retiredDate = null;
+    // Validate everything before touching the item: a rejected edit must leave it intact
+    const retired = document.getElementById('fStatus').value === 'retired';
+    let retiredDate = null;
+    if (retired) {
+      retiredDate = document.getElementById('fRetiredDate').value || today();
+      if (retiredDate < date) { notify('La data di ritiro non può precedere la data di acquisto', 'error'); document.getElementById('fRetiredDate').focus(); return; }
+      // An unchanged date may be a day ahead (retired in a timezone further east)
+      if (retiredDate > today() && retiredDate !== item.retiredDate) { notify('La data di ritiro non può essere nel futuro', 'error'); document.getElementById('fRetiredDate').focus(); return; }
     }
+    Object.assign(item, { product, category, date, price, notes, retired, retiredDate });
   } else {
     items.push({ id: uuid(), product, date, price, category, retired: false, retiredDate: null, notes });
   }
@@ -583,7 +627,8 @@ function exportCSV() {
   const rows = items.map(i => {
     const cpd = getCPD(i);
     const days = getDays(i);
-    return [i.product, i.category, fmtDate(i.date), i.price.toFixed(2), days, cpd.toFixed(2), i.retired?'Ritirato':'Attivo', i.retiredDate?fmtDate(i.retiredDate):'', i.notes||''].map(csvCell).join(';');
+    // Decimal comma: with ';' as separator, Italian Excel reads '179.99' as text/date
+    return [i.product, i.category, fmtDate(i.date), i.price.toFixed(2).replace('.', ','), days, cpd.toFixed(2).replace('.', ','), i.retired?'Ritirato':'Attivo', i.retiredDate?fmtDate(i.retiredDate):'', i.notes||''].map(csvCell).join(';');
   }).join('\n');
   const blob = new Blob(['\uFEFF' + header + rows], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
@@ -703,6 +748,12 @@ function renderCharts() {
 
 function renderFilters() {
   const cats = [...new Set(items.map(i => i.category))].sort();
+  // A saved filter whose category no longer exists would hide every row
+  // behind a select that shows "Tutte"
+  if (filterCategory !== 'all' && !cats.includes(filterCategory)) {
+    filterCategory = 'all';
+    localStorage.setItem('filterCategory', 'all');
+  }
   document.getElementById('filtersBar').innerHTML = `
     <div class="filter-group">
       <label>Categoria</label>
@@ -943,16 +994,32 @@ async function init() {
     // No local data; use defaults if no sync configured
     if (!getSyncConfig()) {
       items = normalizeItems(DEFAULT_DATA);
+      dataLastModified = SEED_TIMESTAMP;
       save();
     }
   }
   updateSyncUI();
   render();
 
-  // Reconcile with remote if sync configured (takes the newer side, no data loss)
-  if (getSyncConfig()) {
-    try { await doSync(); } catch(e) { /* offline, use local */ }
-  }
+  // Reconcile with remote if sync configured (takes the newer side). Not awaited:
+  // a slow or captive network must not delay the listeners and the service worker
+  if (getSyncConfig()) doSync().catch(() => { /* offline, use local */ });
+
+  // Coming back to a PWA left open: refresh day counts and pick up changes made
+  // on other devices before the next local edit pushes over them
+  let lastResumeSync = Date.now();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    render();
+    if (getSyncConfig() && !pushTimer && !pushInFlight && Date.now() - lastResumeSync > 60000) {
+      lastResumeSync = Date.now();
+      doSync().catch(() => {});
+    }
+  });
+  window.addEventListener('online', () => {
+    if (!getSyncConfig()) return;
+    if (pushPending) runPush(); else doSync().catch(() => {});
+  });
 
   // Keep multiple tabs in sync
   window.addEventListener('storage', (e) => {

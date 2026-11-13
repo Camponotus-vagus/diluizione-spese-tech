@@ -1,6 +1,7 @@
 // Static checks: scripts parse, the CSP stays strict, manifest is valid and precached assets exist.
 import fs from 'node:fs';
 import vm from 'node:vm';
+import { execFileSync } from 'node:child_process';
 
 let failed = false;
 const fail = msg => { console.error('FAIL  ' + msg); failed = true; };
@@ -41,5 +42,18 @@ try {
 const sw = fs.readFileSync('sw.js', 'utf8');
 for (const [, asset] of sw.matchAll(/'\.\/([^']+)'/g)) if (!fs.existsSync(asset)) fail(`sw.js precaches missing file: ${asset}`);
 for (const asset of ['theme.js', 'app.js', 'app.css']) if (!sw.includes(`'./${asset}'`)) fail(`sw.js does not precache ${asset}`);
+
+// App shell changed but CACHE_NAME not bumped: installed PWAs never see the
+// "Nuova versione" toast and the offline cache can mix files from two deploys
+const git = (...args) => execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+const base = process.env.GITHUB_BASE_REF ? 'origin/' + process.env.GITHUB_BASE_REF : 'origin/main';
+try {
+  if (process.env.GITHUB_BASE_REF) git('fetch', '--depth=1', 'origin', process.env.GITHUB_BASE_REF);
+  const shell = ['index.html', 'theme.js', 'app.js', 'app.css', 'manifest.json'];
+  const changed = git('diff', '--name-only', base, '--', ...shell).trim();
+  const cacheName = src => (src.match(/CACHE_NAME = CACHE_PREFIX \+ '([^']+)'/) || [])[1];
+  if (changed && cacheName(git('show', base + ':sw.js')) === cacheName(sw)) fail(`app shell changed (${changed.split('\n').join(', ')}) but CACHE_NAME in sw.js was not bumped`);
+  else ok('CACHE_NAME bumped when the app shell changes');
+} catch { console.log(`skip  CACHE_NAME bump check (${base} not available)`); }
 
 process.exit(failed ? 1 : 0);
