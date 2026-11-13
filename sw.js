@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'spese-tech-';
-const CACHE_NAME = CACHE_PREFIX + 'v7';
+const CACHE_NAME = CACHE_PREFIX + 'v8';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -10,6 +10,7 @@ const STATIC_ASSETS = [
   './icons/icon-192.png',
   './icons/icon-512.png'
 ];
+const NETWORK_TIMEOUT = 4000;
 const FONT_ORIGINS = ['https://fonts.googleapis.com', 'https://fonts.gstatic.com'];
 
 self.addEventListener('install', event => {
@@ -55,19 +56,26 @@ self.addEventListener('fetch', event => {
   const isNavigate = req.mode === 'navigate';
   const isAppShell = url.origin === self.location.origin && /(\/|\.html|\.js|\.css)$/.test(url.pathname);
   if (isNavigate || isAppShell) {
-    event.respondWith(
-      fetch(req, { cache: 'no-cache' }).then(response => {
-        // Store under a query-less key so ?x=N links don't grow the cache unbounded
-        if (response.ok && url.origin === self.location.origin) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(url.origin + url.pathname, clone));
-        }
-        return response;
-      }).catch(() => caches.match(req, { ignoreSearch: true }).then(c =>
+    const network = fetch(req, { cache: 'no-cache' }).then(response => {
+      // Store under a query-less key so ?x=N links don't grow the cache unbounded
+      if (response.ok && url.origin === self.location.origin) {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(url.origin + url.pathname, clone));
+      }
+      return response;
+    });
+    const fromCache = () => caches.match(req, { ignoreSearch: true });
+    event.respondWith(new Promise(resolve => {
+      let done = false;
+      const finish = r => { if (!done) { done = true; clearTimeout(timer); resolve(r); } };
+      // Poor connection: after NETWORK_TIMEOUT serve the cached copy if there is
+      // one, otherwise keep waiting for the network
+      const timer = setTimeout(() => fromCache().then(c => { if (c) finish(c); }), NETWORK_TIMEOUT);
+      network.then(finish).catch(() => fromCache().then(c =>
         // Offline and not cached: a navigation falls back to the app page, an
         // asset gets a proper network error (not an undefined Response)
-        c || (isNavigate ? caches.match('./index.html') : Response.error())))
-    );
+        finish(c || (isNavigate ? caches.match('./index.html') : Response.error()))));
+    }));
     return;
   }
 
