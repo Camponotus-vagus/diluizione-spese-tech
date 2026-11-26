@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0c0f1a">
+<script src="theme.js"></script>
+<title>Diluizione Spese Tech</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1><span class="logo">💻</span> Diluizione Spese Tech</h1>
+    <div class="header-actions">
+      <span id="syncBadge" class="sync-badge" hidden></span>
+      <div class="theme-toggle" id="themeToggle" role="group" aria-label="Tema">
+        <button type="button" data-action="setTheme" data-arg="light" title="Chiaro" aria-label="Tema chiaro">&#9728;</button>
+        <button type="button" data-action="setTheme" data-arg="auto" title="Auto" aria-label="Tema automatico">&#9684;</button>
+        <button type="button" data-action="setTheme" data-arg="dark" title="Scuro" aria-label="Tema scuro">&#9790;</button>
+      </div>
+      <button type="button" class="btn-icon" data-action="toggleSettings" title="Impostazioni sync" aria-label="Impostazioni sync">&#9881;</button>
+      <button class="btn btn-primary" data-action="openModal">+ Aggiungi</button>
+    </div>
+  </header>
+
+  <!-- Settings Panel -->
+  <div id="settingsPanel" class="settings-panel" hidden>
+    <h3>&#9881; Configurazione Sync</h3>
+    <div id="syncConfigForm">
+      <div class="settings-info">
+        Inserisci un <strong>GitHub Personal Access Token</strong> per sincronizzare i dati tramite un <strong>Gist segreto</strong>. Usa un <strong>token fine-grained</strong> con il solo permesso <em>Gists: Read and write</em> e una <strong>scadenza</strong>, e revocalo da GitHub se non lo usi più. Il token viene salvato solo nel localStorage di questo browser.<br><br>
+        Un Gist segreto non compare nelle ricerche, ma <strong>chiunque abbia il suo link può leggerlo</strong>. Con una <strong>passphrase</strong> i dati vengono cifrati prima di lasciare il browser: sul Gist resta solo testo illeggibile. Usa la stessa passphrase su tutti i dispositivi e conservala: senza non si possono recuperare i dati del Gist.
+      </div>
+      <div class="settings-row">
+        <label for="inputToken">Token PAT</label>
+        <input type="password" id="inputToken" placeholder="github_pat_xxxxxxxxxxxx" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="settings-row">
+        <label for="inputGistId">Gist ID</label>
+        <input type="text" id="inputGistId" placeholder="(opzionale — ne creeremo uno nuovo)" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="settings-row">
+        <label for="inputPassphrase">Passphrase cifratura</label>
+        <input type="password" id="inputPassphrase" placeholder="(consigliata — almeno 8 caratteri)" autocomplete="new-password">
+      </div>
+      <div class="settings-actions">
+        <button class="btn btn-primary" data-action="configureSync">Configura</button>
+      </div>
+    </div>
+    <div id="syncStatusPanel" hidden>
+      <div class="settings-status">
+        <span id="syncStatusText"></span>
+        <span id="syncGistLink"></span>
+        <span id="syncLastTime" class="sync-last-time"></span>
+      </div>
+      <div class="settings-status">
+        <span id="syncEncState"></span>
+      </div>
+      <div id="encSetRow" class="settings-row">
+        <label for="inputNewPassphrase">Passphrase cifratura</label>
+        <input type="password" id="inputNewPassphrase" placeholder="almeno 8 caratteri" autocomplete="new-password">
+        <button class="btn btn-primary" data-action="setPassphrase">&#128274; Cifra / sblocca</button>
+      </div>
+      <div class="settings-actions">
+        <button class="btn btn-secondary" data-action="doSync">&#128260; Sync ora</button>
+        <button class="btn btn-secondary" data-action="confirmPull">&#128229; Pull da Gist</button>
+        <button class="btn btn-secondary" data-action="pushToGist">&#128228; Push su Gist</button>
+        <button class="btn btn-secondary" id="encRemoveBtn" data-action="removePassphrase" hidden>&#128275; Disattiva cifratura</button>
+        <button class="btn btn-danger" data-action="disconnectSync">&#128268; Disconnetti</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI -->
+  <div class="kpi-grid" id="kpiGrid"></div>
+
+  <!-- Charts -->
+  <div class="charts-grid" id="chartsGrid"></div>
+
+  <!-- IO bar -->
+  <div class="io-bar">
+    <button class="btn btn-secondary" data-action="exportJSON">&#128228; Esporta JSON</button>
+    <button class="btn btn-secondary" data-action="importJSON">&#128229; Importa JSON</button>
+    <button class="btn btn-secondary" data-action="exportCSV">&#128202; Esporta CSV</button>
+    <button class="btn btn-secondary" id="backupBtn" data-action="exportBackup" hidden>&#128190; Scarica ultimo backup</button>
+    <input type="file" id="fileInput" accept=".json" hidden>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-bar" id="filtersBar"></div>
+
+  <!-- Table -->
+  <div class="table-wrap" id="tableWrap"></div>
+
+  <!-- Retired section -->
+  <div id="retiredSection" class="retired-section" hidden></div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h2 id="modalTitle">Aggiungi prodotto</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="fProduct">Prodotto *</label>
+        <input type="text" id="fProduct" required>
+      </div>
+      <div class="form-group">
+        <label for="fCategory">Categoria *</label>
+        <select id="fCategory">
+          <option value="Audio">Audio</option>
+          <option value="Laptop">Laptop</option>
+          <option value="Wearable">Wearable</option>
+          <option value="Tablet">Tablet</option>
+          <option value="Desktop">Desktop</option>
+          <option value="Smartphone">Smartphone</option>
+          <option value="Drone">Drone</option>
+          <option value="Fotografia">Fotografia</option>
+          <option value="Gaming">Gaming</option>
+          <option value="Altro">Altro</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="fDate">Data acquisto *</label>
+        <input type="date" id="fDate">
+      </div>
+      <div class="form-group">
+        <label for="fPrice">Prezzo (€) *</label>
+        <input type="number" id="fPrice" step="0.01" min="0">
+      </div>
+    </div>
+    <div id="editFields" hidden>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="fStatus">Stato</label>
+          <select id="fStatus">
+            <option value="active">Attivo</option>
+            <option value="retired">Ritirato</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="fRetiredDate">Data ritiro</label>
+          <input type="date" id="fRetiredDate">
+        </div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="fNotes">Note</label>
+      <textarea id="fNotes" rows="2"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" data-action="closeModal">Annulla</button>
+      <button class="btn btn-primary" id="modalSaveBtn" data-action="saveProduct">Salva</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm dialog -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box" role="alertdialog" aria-modal="true" aria-describedby="confirmMsg">
+    <p id="confirmMsg"></p>
+    <div class="confirm-actions">
+      <button class="btn btn-secondary" data-action="closeConfirm" data-arg="false">Annulla</button>
+      <button class="btn btn-danger" id="confirmBtn" data-action="closeConfirm" data-arg="true">Conferma</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
